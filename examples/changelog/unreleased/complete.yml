@@ -1,0 +1,57 @@
+# Complete changelog entry with all available fields
+title: Implement OAuth2 authentication and fix security vulnerability
+
+type: security
+
+authors:
+  - name: Alice Security Expert
+    nick: alice-security
+    url: https://github.com/alice-security
+  - name: Bob Developer
+    nick: bobdev
+    url: https://github.com/bobdev
+
+modules:
+  - authentication
+  - api
+  - web
+
+issues:
+  - 123
+  - 456
+
+merge_requests:
+  - 789
+  - 790
+
+links:
+  - name: Security Advisory
+    url: https://example.com/security/advisory-2024-01
+  - name: OAuth2 RFC
+    url: https://tools.ietf.org/html/rfc6749
+
+important_notes: |
+  This update is CRITICAL for security.
+  All users must upgrade to version 2.0 or later.
+  See MIGRATION.md for upgrade instructions.
+
+configurations:
+  - type: environment_variable
+    action: add
+    key: OAUTH2_CLIENT_ID
+    default_value: ""
+    description: OAuth2 application client ID
+    more_info: Obtain this from your OAuth2 provider's admin console
+
+  - type: environment_variable
+    action: add
+    key: OAUTH2_CLIENT_SECRET
+    default_value: ""
+    description: OAuth2 application client secret
+    more_info: Keep this secret and never commit it to version control
+
+  - type: configuration_file
+    action: update
+    key: auth.provider
+    default_value: oauth2
+    description: Authentication provider to use

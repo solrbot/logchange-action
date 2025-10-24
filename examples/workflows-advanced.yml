@@ -1,0 +1,48 @@
+# Advanced workflow with strict validation rules
+name: Changelog Check - Advanced Configuration
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solrbot/logchange-action@v1
+        with:
+          changelog-path: changelog/unreleased
+          on-missing-entry: generate
+          claude-token: ${{ secrets.CLAUDE_API_KEY }}
+
+          # Skip changelog for documentation-only changes
+          skip-files-regex: '^(README\.md|docs/|\.github/|\.gitignore)'
+
+          # Enforce specific types
+          changelog-types: added,changed,fixed,security,dependency_update
+
+          # Require title, type, and authors
+          mandatory-fields: title,type,authors
+
+          # Forbid internal field
+          forbidden-fields: internal
+
+          # Allow only specific fields
+          optional-fields: title,type,authors,modules,issues,links
+
+          # Restrict AI generation context for performance
+          max-tokens-context: 3000
+          max-tokens-per-file: 500
+
+          # Use faster/cheaper model for generation
+          claude-model: claude-3-5-haiku-20241022
+
+          # Generate in German
+          changelog-language: German
+
+          # Custom system prompt
+          claude-system-prompt: |
+            You are a German changelog expert.
+            Generate clear, user-focused entries.
+            Always mention why the change matters.

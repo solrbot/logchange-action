@@ -1,0 +1,9 @@
+# Minimal changelog entry - only required fields
+title: Add support for webhook endpoints
+
+type: added
+
+authors:
+  - name: John Developer
+    nick: johndeveloper
+    url: https://github.com/johndeveloper

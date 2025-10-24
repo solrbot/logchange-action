@@ -1,0 +1,20 @@
+# Workflow with AI-powered generation
+name: Changelog Check with AI Generation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solrbot/logchange-action@v1
+        with:
+          on-missing-entry: generate
+          claude-token: ${{ secrets.CLAUDE_API_KEY }}
+          changelog-language: English
+          # Optional: customize the system prompt
+          # claude-system-prompt: |
+          #   You are a changelog expert...
