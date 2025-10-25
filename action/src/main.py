@@ -92,9 +92,7 @@ class LogchangeAction:
         logger.debug(
             f"Claude token: {'***' if self.claude_token else '(not provided)'}"
         )
-        self.claude_model = self._get_input(
-            "claude-model", "claude-3-5-sonnet-20241022"
-        )
+        self.claude_model = self._get_input("claude-model", "claude-opus-4-1-20250805")
         self.claude_system_prompt = self._get_input("claude-system-prompt", "")
         self.changelog_language = self._get_input("changelog-language", "English")
         self.max_tokens_context = int(self._get_input("max-tokens-context", "5000"))

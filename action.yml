@@ -30,7 +30,7 @@ inputs:
   claude-model:
     description: 'Claude model to use for generation'
     required: false
-    default: 'claude-3-5-sonnet-20241022'
+    default: 'claude-opus-4-1-20250805'
 
   claude-system-prompt:
     description: 'Custom system prompt for Claude changelog generation'
