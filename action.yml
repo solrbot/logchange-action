@@ -1,6 +1,6 @@
 name: 'Logchange Action'
-description: 'Ensure your pull requests include logchange changelog entries, with AI-powered generation support'
-author: 'solrbot'
+description: 'Enforce logchange changelog entries in PRs with optional AI generation via Claude'
+author: 'Jan Høydahl (with Claude Code)'
 
 inputs:
   changelog-path:
@@ -149,8 +149,11 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
+  image: 'docker://YOUR-REGISTRY/logchange-action:latest'
   entrypoint: '/action/src/entrypoint.sh'
+
+# NOTE: Replace YOUR-REGISTRY with your container registry (e.g., ghcr.io/your-username).
+# See DEPLOYMENT.md for detailed instructions on building and pushing to your registry.
 
 branding:
   icon: 'package'

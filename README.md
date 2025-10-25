@@ -2,6 +2,8 @@
 
 GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries in PRs, with optional AI generation via Claude.
 
+
+
 ## Features
 
 - PR workflow detection with file change analysis
@@ -16,15 +18,17 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 ## Quick Start
 
+Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
+
 **Basic (fail on missing entry):**
 ```yaml
 - uses: actions/checkout@v4
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
 ```
 
-**With AI generation:**
+**With AI generation (requires Claude API key):**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -32,10 +36,13 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **With warnings only:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: warn
 ```
+
+> **Replace `YOUR-GITHUB-USER`** with the GitHub username where you've forked/published this action.
+> See [Deployment](#deployment) for detailed publishing instructions.
 
 ## Configuration
 
@@ -81,14 +88,14 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **Skip changelog for docs-only changes:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     skip-files-regex: '^(README\.md|docs/|\.github/)'
 ```
 
 **Strict enterprise rules:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -99,7 +106,7 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **German language generation:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -108,7 +115,7 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **With external issue tracker (JIRA):**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -118,7 +125,7 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **With multiple external issue trackers (Azure DevOps):**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -128,7 +135,7 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **Disable important notes generation:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -137,7 +144,7 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 **Disable GitHub issue detection:**
 ```yaml
-- uses: solrbot/logchange-action@v1
+- uses: YOUR-GITHUB-USER/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -215,6 +222,39 @@ important_notes: |
 ```
 
 See [logchange docs](https://logchange.dev/) for complete specification and additional fields.
+
+## Deployment
+
+### Publishing Your Own Version
+
+This action is designed to be self-hosted. To publish your own version:
+
+1. **Fork the repository** on GitHub
+2. **Update the Docker image reference** in `action.yml` to point to your container registry
+3. **Follow the deployment guide** in [DEPLOYMENT.md](DEPLOYMENT.md) for building and pushing Docker images
+4. **Create a GitHub Release** with semantic versioning (e.g., `v1.0.0`)
+5. **Use your version** in workflows with: `uses: YOUR-USERNAME/logchange-action@v1`
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
+- Building and pushing Docker images to your container registry
+- Creating GitHub Releases
+- Semantic versioning strategy
+- Local testing with the CLI tool
+
+### Local Testing
+
+Use the included testing CLI tool to validate the action locally without running a full GitHub workflow:
+
+```bash
+# Test changelog validation
+python3 test_action_cli.py validate --sample "title: Test\ntype: added"
+
+# Test changelog generation (requires Claude API key)
+export CLAUDE_API_KEY="sk-ant-..."
+python3 test_action_cli.py generate --diff changes.diff
+
+# See LOCAL_TESTING.md for comprehensive examples
+```
 
 ## License
 
