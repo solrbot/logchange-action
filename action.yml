@@ -149,11 +149,8 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://YOUR-REGISTRY/logchange-action:latest'
+  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
   entrypoint: '/action/src/entrypoint.sh'
-
-# NOTE: Replace YOUR-REGISTRY with your container registry (e.g., ghcr.io/your-username).
-# See DEPLOYMENT.md for detailed instructions on building and pushing to your registry.
 
 branding:
   icon: 'package'

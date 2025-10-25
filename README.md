@@ -2,8 +2,6 @@
 
 GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries in PRs, with optional AI generation via Claude.
 
-
-
 ## Features
 
 - PR workflow detection with file change analysis
@@ -255,6 +253,12 @@ python3 test_action_cli.py generate --diff changes.diff
 
 # See LOCAL_TESTING.md for comprehensive examples
 ```
+
+## Credits
+
+This action was created by [Jan Høydahl](https://github.com/janhoy) with assistance from [Claude Code](https://claude.com/claude-code).
+
+ Special thanks to the [logchange](https://logchange.dev/) project team, particularly [Peter Zmilczak](https://github.com/marwin1991) (@marwin1991) for being incredibly responsive in fixing bugs, accepting feature requests, and providing excellent guidance. This work was inspired by the [Apache Solr](https://solr.apache.org/) project's needs for structured changelog management.
 
 ## License
 

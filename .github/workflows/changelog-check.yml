@@ -22,8 +22,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}  # Check out PR's actual code
 
       - name: Check Changelog
-        uses: YOUR-USERNAME/logchange-action@main
-        # Replace YOUR-USERNAME with your GitHub username
+        uses: solrbot/logchange-action@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
