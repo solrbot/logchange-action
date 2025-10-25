@@ -89,6 +89,9 @@ class LogchangeAction:
         )
         self.skip_files_regex = self._get_input("skip-files-regex", "")
         self.claude_token = self._get_input("claude-token", "")
+        logger.debug(
+            f"Claude token: {'***' if self.claude_token else '(not provided)'}"
+        )
         self.claude_model = self._get_input(
             "claude-model", "claude-3-5-sonnet-20241022"
         )
