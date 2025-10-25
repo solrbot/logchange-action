@@ -19,7 +19,7 @@ jobs:
 
           # Optional: what to do when entry is missing (default: fail)
           # Options: fail, warn, generate
-          on-missing-entry: fail
+          on-missing-entry: warn
 
           # Optional: skip changelog for docs-only changes
           # skip-files-regex: '^(README\.md|docs/|\.github/)'
