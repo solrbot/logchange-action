@@ -10,8 +10,6 @@ import re
 import sys
 from typing import Any, Dict, List
 
-import requests
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -81,21 +79,6 @@ class LogchangeAction:
         self.github_event = self._load_github_event()
         self.github_token = os.getenv("GITHUB_TOKEN")
         self.github_api_url = os.getenv("GITHUB_API_URL", "https://api.github.com")
-
-        # BEGIN DEBUG Check token permissions
-        headers = {"Authorization": f"token {self.github_token}"}
-        response = requests.get(f"{self.github_api_url}/user", headers=headers)
-
-        if response.status_code == 200:
-            print(f"Token user: {response.json()['login']}")
-            print(f"Token headers: {response.headers}")
-            # GitHub returns X-OAuth-Scopes header
-            scopes = response.headers.get("X-OAuth-Scopes", "Not available")
-            print(f"Token scopes: {scopes}")
-        else:
-            print(f"Failed to validate token: {response.status_code}")
-            print(f"Response: {response.text}")
-        # END DEBUG Check token permissions
 
         # Action inputs
         self.changelog_path = self._get_input("changelog-path", "changelog/unreleased")
@@ -293,9 +276,14 @@ class LogchangeAction:
     def _is_pr_workflow(self) -> bool:
         """Check if running in a PR workflow"""
         event_name = os.getenv("GITHUB_EVENT_NAME", "")
-        return event_name == "pull_request" and bool(
+        is_pr_event = event_name in ["pull_request", "pull_request_target"] and bool(
             self.github_event.get("pull_request")
         )
+
+        if is_pr_event:
+            logger.info(f"Running on {event_name} event")
+
+        return is_pr_event
 
     def _should_skip_changelog(self, pr_files: List[str]) -> bool:
         """Check if all files match skip pattern"""
