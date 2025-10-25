@@ -41,7 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Support for developers who refuse to write changelog entries (tough love) (#298) (Nina Gupta)
 - Legacy "I forgot the changelog" excuse handling (#445) (Raj Patel)
-- Remove the "comment-mode" setting. Normal PR comments are now the default and only option. In addition, legacy changelog entry process is improved with code-suggest type of PR comment. (#111) (Jon Blow, Jane Snow)
 
 ### Security
 - Added detection for when developers try to hide breaking changes in the changelog (#567) (Lisa Wong)
