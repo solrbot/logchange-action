@@ -19,8 +19,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           changelog-path: changelog/unreleased
-          on-missing-entry: warn
-          # skip-files-regex: '^(README\.md|docs/|\.github/)'
-          # For AI generation:
-          # on-missing-entry: generate
-          # claude-token: ${{ secrets.CLAUDE_API_KEY }}
+          on-missing-entry: generate
+          claude-token: ${{ secrets.CLAUDE_API_KEY }}
+          skip-files-regex: '^(README\.md|docs/|\.github/)'
