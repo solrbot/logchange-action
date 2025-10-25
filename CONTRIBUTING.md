@@ -124,5 +124,3 @@ docker run -e GITHUB_EVENT_NAME=pull_request logchange-action:test
 - Reference related issues
 - Keep focused on single feature
 - Tests should pass
-
-For security issues, email security@solrbot.dev instead of opening an issue.
