@@ -4,7 +4,7 @@ This guide explains how to deploy the Logchange Action to GitHub.
 
 ## Prerequisites
 
-1. GitHub account with owner permissions for solrbot organization
+1. GitHub account with owner permissions for the organization/user (we use `solrbot` as example)
 2. Docker Hub account (for publishing Docker image) - optional but recommended
 3. Git installed locally
 
