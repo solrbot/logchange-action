@@ -149,7 +149,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
+  image: 'docker://ghcr.io/solrbot/logchange-action:latest
   entrypoint: '/action/src/entrypoint.sh'
 
 branding:
