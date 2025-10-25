@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'action', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
 from main import generate_changelog_slug
 
@@ -82,10 +82,22 @@ class TestSlugGeneration:
     def test_slug_real_world_examples(self):
         """Test with real-world PR titles"""
         examples = [
-            (123, "Fix critical security vulnerability in auth module", "pr-123-fix-critical-security-vulnerability-in-aut.yml"),
-            (456, "BREAKING: Refactor API endpoints", "pr-456-breaking-refactor-api-endpoints.yml"),
+            (
+                123,
+                "Fix critical security vulnerability in auth module",
+                "pr-123-fix-critical-security-vulnerability-in-aut.yml",
+            ),
+            (
+                456,
+                "BREAKING: Refactor API endpoints",
+                "pr-456-breaking-refactor-api-endpoints.yml",
+            ),
             (789, "chore: update dependencies", "pr-789-chore-update-dependencies.yml"),
-            (1, "Add support for Redis caching (RFC-123)", "pr-1-add-support-for-redis-caching-rfc-123.yml"),
+            (
+                1,
+                "Add support for Redis caching (RFC-123)",
+                "pr-1-add-support-for-redis-caching-rfc-123.yml",
+            ),
         ]
 
         for pr_num, title, expected in examples:
@@ -95,5 +107,5 @@ class TestSlugGeneration:
             assert slug.endswith(".yml")
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

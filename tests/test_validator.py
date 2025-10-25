@@ -2,7 +2,8 @@
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'action', 'src'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
 import unittest
 from changelog_validator import ChangelogValidator
@@ -39,7 +40,7 @@ authors:
 """
         is_valid, errors = self.validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertIn('Missing mandatory field: title', errors)
+        self.assertIn("Missing mandatory field: title", errors)
 
     def test_invalid_yaml(self):
         """Test validation fails for invalid YAML"""
@@ -50,7 +51,7 @@ title: Test
 """
         is_valid, errors = self.validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertTrue(any('Invalid YAML' in e for e in errors))
+        self.assertTrue(any("Invalid YAML" in e for e in errors))
 
     def test_invalid_type(self):
         """Test validation fails for invalid type"""
@@ -60,11 +61,11 @@ type: invalid_type
 """
         is_valid, errors = self.validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertTrue(any('Invalid type' in e for e in errors))
+        self.assertTrue(any("Invalid type" in e for e in errors))
 
     def test_forbidden_field(self):
         """Test validation fails when forbidden field is present"""
-        validator = ChangelogValidator(forbidden_fields=['internal'])
+        validator = ChangelogValidator(forbidden_fields=["internal"])
         yaml_content = """
 title: Test
 type: added
@@ -72,20 +73,20 @@ internal: true
 """
         is_valid, errors = validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertIn('Forbidden field present: internal', errors)
+        self.assertIn("Forbidden field present: internal", errors)
 
     def test_empty_yaml(self):
         """Test validation fails for empty YAML"""
         is_valid, errors = self.validator.validate("")
         self.assertFalse(is_valid)
-        self.assertIn('YAML is empty', errors)
+        self.assertIn("YAML is empty", errors)
 
     def test_not_dict_yaml(self):
         """Test validation fails when YAML is not a dict"""
         yaml_content = "- item1\n- item2"
         is_valid, errors = self.validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertIn('YAML must be a dictionary/object', errors)
+        self.assertIn("YAML must be a dictionary/object", errors)
 
     def test_invalid_authors(self):
         """Test validation fails for invalid authors"""
@@ -100,18 +101,18 @@ authors:
 
     def test_custom_mandatory_fields(self):
         """Test validation with custom mandatory fields"""
-        validator = ChangelogValidator(mandatory_fields=['title', 'type', 'authors'])
+        validator = ChangelogValidator(mandatory_fields=["title", "type", "authors"])
         yaml_content = """
 title: Test
 type: added
 """
         is_valid, errors = validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertIn('Missing mandatory field: authors', errors)
+        self.assertIn("Missing mandatory field: authors", errors)
 
     def test_custom_types(self):
         """Test validation with custom changelog types"""
-        validator = ChangelogValidator(changelog_types=['feature', 'bugfix'])
+        validator = ChangelogValidator(changelog_types=["feature", "bugfix"])
         yaml_content = """
 title: Test
 type: feature
@@ -125,13 +126,11 @@ type: added
 """
         is_valid, errors = validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertTrue(any('Invalid type' in e for e in errors))
+        self.assertTrue(any("Invalid type" in e for e in errors))
 
     def test_optional_fields_restriction(self):
         """Test validation with restricted optional fields"""
-        validator = ChangelogValidator(
-            optional_fields=['title', 'type', 'authors']
-        )
+        validator = ChangelogValidator(optional_fields=["title", "type", "authors"])
         yaml_content = """
 title: Test
 type: added
@@ -140,8 +139,8 @@ modules:
 """
         is_valid, errors = validator.validate(yaml_content)
         self.assertFalse(is_valid)
-        self.assertTrue(any('Unknown field: modules' in e for e in errors))
+        self.assertTrue(any("Unknown field: modules" in e for e in errors))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

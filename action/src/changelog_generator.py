@@ -42,9 +42,9 @@ Only include 'important_notes' if the change significantly impacts users or requ
     def __init__(
         self,
         api_key: str,
-        model: str = 'claude-3-5-sonnet-20241022',
+        model: str = "claude-3-5-sonnet-20241022",
         system_prompt: Optional[str] = None,
-        changelog_language: str = 'English',
+        changelog_language: str = "English",
         max_tokens_context: int = 5000,
         max_tokens_per_file: int = 1000,
         changelog_types: Optional[list] = None,
@@ -80,13 +80,24 @@ Only include 'important_notes' if the change significantly impacts users or requ
         self.external_issue_regex = external_issue_regex
         self.external_issue_url_template = external_issue_url_template
         self.changelog_types = changelog_types or [
-            'added', 'changed', 'deprecated', 'removed', 'fixed', 'security', 'dependency_update', 'other'
+            "added",
+            "changed",
+            "deprecated",
+            "removed",
+            "fixed",
+            "security",
+            "dependency_update",
+            "other",
         ]
-        self.mandatory_fields = mandatory_fields or ['title']
+        self.mandatory_fields = mandatory_fields or ["title"]
         self.forbidden_fields = forbidden_fields or []
 
         # Build system prompt
-        lang_instruction = f'Write the entry in {changelog_language}.' if changelog_language != 'English' else ''
+        lang_instruction = (
+            f"Write the entry in {changelog_language}."
+            if changelog_language != "English"
+            else ""
+        )
         prompt_parts = [system_prompt or self.DEFAULT_SYSTEM_PROMPT]
 
         # Add important_notes instruction if enabled
@@ -94,21 +105,25 @@ Only include 'important_notes' if the change significantly impacts users or requ
             prompt_parts.append(self.DEFAULT_IMPORTANT_NOTES_INSTRUCTION)
 
         prompt_parts.append(lang_instruction)
-        self.system_prompt = '\n'.join(p for p in prompt_parts if p).strip()
+        self.system_prompt = "\n".join(p for p in prompt_parts if p).strip()
 
-        self.api_url = 'https://api.anthropic.com/v1/messages'
+        self.api_url = "https://api.anthropic.com/v1/messages"
         self._setup_session()
 
     def _setup_session(self) -> None:
         """Set up HTTP session with authentication headers"""
         self.session = requests.Session()
-        self.session.headers.update({
-            'x-api-key': self.api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        })
+        self.session.headers.update(
+            {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            }
+        )
 
-    def generate(self, pr_diff: str, pr_info: Dict[str, Any], custom_prompt: Optional[str] = None) -> Optional[str]:
+    def generate(
+        self, pr_diff: str, pr_info: Dict[str, Any], custom_prompt: Optional[str] = None
+    ) -> Optional[str]:
         """
         Generate a changelog entry
 
@@ -124,14 +139,16 @@ Only include 'important_notes' if the change significantly impacts users or requ
             # Use custom prompt if provided, otherwise build from PR info
             if custom_prompt:
                 user_message = custom_prompt
-                logger.debug('Using custom prompt for generation')
+                logger.debug("Using custom prompt for generation")
             else:
                 # Extract PR information
-                pr_title = pr_info.get('title', '')
-                pr_body = pr_info.get('body', '')
-                pr_author = pr_info.get('user', {}).get('login', 'unknown')
-                pr_author_url = pr_info.get('user', {}).get('html_url', '')
-                pr_labels = [label.get('name', '') for label in pr_info.get('labels', [])]
+                pr_title = pr_info.get("title", "")
+                pr_body = pr_info.get("body", "")
+                pr_author = pr_info.get("user", {}).get("login", "unknown")
+                pr_author_url = pr_info.get("user", {}).get("html_url", "")
+                pr_labels = [
+                    label.get("name", "") for label in pr_info.get("labels", [])
+                ]
 
                 # Extract commit authors if available
                 commit_authors = self._extract_commit_authors(pr_info)
@@ -144,28 +161,30 @@ Only include 'important_notes' if the change significantly impacts users or requ
                     pr_author_url=pr_author_url,
                     pr_labels=pr_labels,
                     pr_diff=pr_diff,
-                    commit_authors=commit_authors
+                    commit_authors=commit_authors,
                 )
 
-            logger.debug(f'Sending request to Claude API (model: {self.model})')
+            logger.debug(f"Sending request to Claude API (model: {self.model})")
 
             # Call Claude API with session
             response = self.session.post(
                 self.api_url,
                 json={
-                    'model': self.model,
-                    'max_tokens': 1024,
-                    'system': self.system_prompt,
-                    'messages': [{'role': 'user', 'content': user_message}]
-                }
+                    "model": self.model,
+                    "max_tokens": 1024,
+                    "system": self.system_prompt,
+                    "messages": [{"role": "user", "content": user_message}],
+                },
             )
 
             if response.status_code != 200:
-                logger.error(f'Claude API error: {response.status_code} - {response.text}')
+                logger.error(
+                    f"Claude API error: {response.status_code} - {response.text}"
+                )
                 return None
 
             result = response.json()
-            generated_text = result['content'][0]['text']
+            generated_text = result["content"][0]["text"]
 
             # Extract YAML from markdown code blocks if present
             generated_text = self._extract_yaml(generated_text)
@@ -173,24 +192,24 @@ Only include 'important_notes' if the change significantly impacts users or requ
             # Validate that it's valid YAML
             try:
                 yaml.safe_load(generated_text)
-                logger.info('Successfully generated and validated changelog entry')
+                logger.info("Successfully generated and validated changelog entry")
                 return generated_text.strip()
             except yaml.YAMLError as e:
-                logger.error(f'Generated text is not valid YAML: {e}')
-                logger.debug(f'Generated text: {generated_text}')
+                logger.error(f"Generated text is not valid YAML: {e}")
+                logger.debug(f"Generated text: {generated_text}")
                 return None
 
         except requests.exceptions.RequestException as e:
-            logger.error(f'Failed to call Claude API: {e}')
+            logger.error(f"Failed to call Claude API: {e}")
             return None
         except (KeyError, ValueError) as e:
-            logger.error(f'Failed to parse Claude response: {e}')
+            logger.error(f"Failed to parse Claude response: {e}")
             return None
 
     def _extract_yaml(self, text: str) -> str:
         """Extract YAML from markdown code blocks if present"""
         # Try to extract from ```yaml ... ``` or ``` ... ``` block
-        match = re.search(r'```(?:yaml)?\s*\n(.*?)\n```', text, re.DOTALL)
+        match = re.search(r"```(?:yaml)?\s*\n(.*?)\n```", text, re.DOTALL)
         if match:
             return match.group(1).strip()
 
@@ -200,12 +219,16 @@ Only include 'important_notes' if the change significantly impacts users or requ
     def _extract_commit_authors(self, pr_info: Dict[str, Any]) -> list:
         """Extract unique authors from commits if available"""
         authors = set()
-        commits = pr_info.get('commits', []) if isinstance(pr_info.get('commits'), list) else []
+        commits = (
+            pr_info.get("commits", [])
+            if isinstance(pr_info.get("commits"), list)
+            else []
+        )
 
         for commit in commits:
-            author_info = commit.get('author', {})
+            author_info = commit.get("author", {})
             if author_info and isinstance(author_info, dict):
-                login = author_info.get('login')
+                login = author_info.get("login")
                 if login:
                     authors.add(login)
 
@@ -229,13 +252,19 @@ Only include 'important_notes' if the change significantly impacts users or requ
         rules_section = self._build_validation_rules()
 
         # Build authors section
-        authors_section = self._build_authors_section(pr_author, commit_authors, pr_author_url)
+        authors_section = self._build_authors_section(
+            pr_author, commit_authors, pr_author_url
+        )
 
         # Build language instruction
-        language_section = f"Write the changelog entry in {self.changelog_language}." if self.changelog_language != 'English' else ""
+        language_section = (
+            f"Write the changelog entry in {self.changelog_language}."
+            if self.changelog_language != "English"
+            else ""
+        )
 
         # Build types list
-        types_list = ', '.join(self.changelog_types)
+        types_list = ", ".join(self.changelog_types)
 
         message = f"""Generate a logchange changelog entry for the following pull request:
 
@@ -283,15 +312,19 @@ Make sure the generated YAML is valid and can be parsed directly. Output ONLY th
         if not rules:
             rules.append("- Standard logchange format (title, type, authors)")
 
-        return '\n'.join(rules)
+        return "\n".join(rules)
 
-    def _build_authors_section(self, primary_author: str, commit_authors: list, author_url: str) -> str:
+    def _build_authors_section(
+        self, primary_author: str, commit_authors: list, author_url: str
+    ) -> str:
         """Build authors information section"""
         if not commit_authors:
             return ""
 
         authors_text = "**Contributors to this PR:**\n"
-        all_authors = [primary_author] + [a for a in commit_authors if a != primary_author]
-        authors_text += ', '.join(all_authors)
+        all_authors = [primary_author] + [
+            a for a in commit_authors if a != primary_author
+        ]
+        authors_text += ", ".join(all_authors)
 
         return authors_text

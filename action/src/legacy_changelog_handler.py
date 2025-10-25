@@ -23,9 +23,11 @@ class LegacyChangelogHandler:
         self.is_enabled = len(self.legacy_changelog_paths) > 0
 
         if self.is_enabled:
-            logger.info(f'Initialized legacy changelog handler with {len(self.legacy_changelog_paths)} paths')
+            logger.info(
+                f"Initialized legacy changelog handler with {len(self.legacy_changelog_paths)} paths"
+            )
         else:
-            logger.info('Legacy changelog detection is DISABLED (no paths configured)')
+            logger.info("Legacy changelog detection is DISABLED (no paths configured)")
 
     def find_legacy_changelog_files(self, pr_files: List[str]) -> List[str]:
         """
@@ -38,7 +40,7 @@ class LegacyChangelogHandler:
             List of legacy changelog file paths found in PR (empty if detection disabled)
         """
         if not self.is_enabled:
-            logger.debug('Legacy changelog detection is disabled, skipping search')
+            logger.debug("Legacy changelog detection is disabled, skipping search")
             return []
 
         legacy_files = []
@@ -50,7 +52,7 @@ class LegacyChangelogHandler:
                     legacy_files.append(pr_file)
                     break
 
-        logger.info(f'Found {len(legacy_files)} legacy changelog file(s) in PR')
+        logger.info(f"Found {len(legacy_files)} legacy changelog file(s) in PR")
         return legacy_files
 
     def extract_changelog_entry_from_diff(self, diff_content: str) -> Optional[str]:
@@ -65,25 +67,25 @@ class LegacyChangelogHandler:
         Returns:
             Extracted changelog entry text or None if not found
         """
-        lines = diff_content.split('\n')
+        lines = diff_content.split("\n")
         added_lines = []
         in_hunk = False
 
         for line in lines:
             # Track when we're in a hunk
-            if line.startswith('@@'):
+            if line.startswith("@@"):
                 in_hunk = True
                 continue
 
             if in_hunk:
                 # Only capture added lines (starting with '+' but not '+++')
-                if line.startswith('+') and not line.startswith('+++'):
+                if line.startswith("+") and not line.startswith("+++"):
                     # Remove the '+' prefix
                     added_lines.append(line[1:])
 
         if added_lines:
-            entry_text = '\n'.join(added_lines).strip()
-            logger.debug(f'Extracted changelog entry: {len(entry_text)} characters')
+            entry_text = "\n".join(added_lines).strip()
+            logger.debug(f"Extracted changelog entry: {len(entry_text)} characters")
             return entry_text
 
         return None
@@ -101,20 +103,25 @@ class LegacyChangelogHandler:
         lower_text = entry_text.lower()
 
         # Check for "Unreleased" or "Upcoming" sections FIRST (before markdown)
-        if any(keyword in lower_text for keyword in ['unreleased', 'upcoming', 'next release', 'in development']):
-            return 'unreleased'
+        if any(
+            keyword in lower_text
+            for keyword in ["unreleased", "upcoming", "next release", "in development"]
+        ):
+            return "unreleased"
 
         # Check for markdown-style entries (## Version, ### Section)
-        if re.search(r'^#+\s+', entry_text, re.MULTILINE):
-            return 'markdown'
+        if re.search(r"^#+\s+", entry_text, re.MULTILINE):
+            return "markdown"
 
         # Check for bullet point lists (typical changelog format)
-        if re.search(r'^[\s]*[-*+]\s+', entry_text, re.MULTILINE):
-            return 'plain_text'
+        if re.search(r"^[\s]*[-*+]\s+", entry_text, re.MULTILINE):
+            return "plain_text"
 
-        return 'other'
+        return "other"
 
-    def extract_version_and_date(self, entry_text: str) -> Tuple[Optional[str], Optional[str]]:
+    def extract_version_and_date(
+        self, entry_text: str
+    ) -> Tuple[Optional[str], Optional[str]]:
         """
         Extract version number and date from changelog entry
 
@@ -125,13 +132,13 @@ class LegacyChangelogHandler:
             Tuple of (version, date) or (None, None) if not found
         """
         # Pattern: ## 1.2.3 - 2024-10-24
-        version_pattern = r'(?:##|###)?\s*(?:v?(\d+\.\d+(?:\.\d+)?(?:-\w+\.\d+)?))(?:\s*[-–]\s*(\d{4}-\d{2}-\d{2}))?'
+        version_pattern = r"(?:##|###)?\s*(?:v?(\d+\.\d+(?:\.\d+)?(?:-\w+\.\d+)?))(?:\s*[-–]\s*(\d{4}-\d{2}-\d{2}))?"
         match = re.search(version_pattern, entry_text)
 
         if match:
             version = match.group(1)
             date = match.group(2) if match.lastindex >= 2 else None
-            logger.debug(f'Extracted version: {version}, date: {date}')
+            logger.debug(f"Extracted version: {version}, date: {date}")
             return version, date
 
         return None, None
@@ -150,24 +157,21 @@ class LegacyChangelogHandler:
         version, date = self.extract_version_and_date(entry_text)
 
         # Create a brief summary (first 100 chars)
-        summary = entry_text[:100].replace('\n', ' ').strip()
+        summary = entry_text[:100].replace("\n", " ").strip()
         if len(entry_text) > 100:
-            summary += '...'
+            summary += "..."
 
         return {
-            'type': entry_type,
-            'version': version,
-            'date': date,
-            'summary': summary,
-            'line_count': len(entry_text.split('\n')),
-            'char_count': len(entry_text),
+            "type": entry_type,
+            "version": version,
+            "date": date,
+            "summary": summary,
+            "line_count": len(entry_text.split("\n")),
+            "char_count": len(entry_text),
         }
 
     def create_conversion_prompt(
-        self,
-        entry_text: str,
-        pr_info: Dict[str, Any],
-        context: Dict[str, Any]
+        self, entry_text: str, pr_info: Dict[str, Any], context: Dict[str, Any]
     ) -> str:
         """
         Create a custom user prompt for converting legacy entry to logchange format
@@ -180,8 +184,8 @@ class LegacyChangelogHandler:
         Returns:
             The user prompt for Claude
         """
-        pr_title = pr_info.get('title', '')
-        entry_type = context.get('type', 'unknown')
+        pr_title = pr_info.get("title", "")
+        entry_type = context.get("type", "unknown")
 
         prompt = f"""I have extracted a changelog entry from a legacy {entry_type} format changelog file.
 Please convert this legacy changelog entry into a logchange-formatted YAML entry.
@@ -207,7 +211,9 @@ Now generate a logchange-formatted YAML entry that captures the same information
 
         return prompt
 
-    def should_fail_on_conflict(self, legacy_files: List[str], logchange_files: List[str]) -> bool:
+    def should_fail_on_conflict(
+        self, legacy_files: List[str], logchange_files: List[str]
+    ) -> bool:
         """
         Determine if having both legacy and logchange entries is a conflict
 
@@ -223,6 +229,8 @@ Now generate a logchange-formatted YAML entry that captures the same information
         is_conflict = has_legacy and has_logchange
 
         if is_conflict:
-            logger.warning(f'Conflict detected: {len(legacy_files)} legacy files and {len(logchange_files)} logchange files')
+            logger.warning(
+                f"Conflict detected: {len(legacy_files)} legacy files and {len(logchange_files)} logchange files"
+            )
 
         return is_conflict

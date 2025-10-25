@@ -12,27 +12,27 @@ class ChangelogValidator:
 
     # Standard logchange fields
     STANDARD_FIELDS = {
-        'title',  # Required
-        'authors',
-        'modules',
-        'merge_requests',
-        'issues',
-        'type',
-        'links',
-        'important_notes',
-        'configurations'
+        "title",  # Required
+        "authors",
+        "modules",
+        "merge_requests",
+        "issues",
+        "type",
+        "links",
+        "important_notes",
+        "configurations",
     }
 
     # Standard types
     STANDARD_TYPES = {
-        'added',
-        'changed',
-        'deprecated',
-        'removed',
-        'fixed',
-        'security',
-        'dependency_update',
-        'other'
+        "added",
+        "changed",
+        "deprecated",
+        "removed",
+        "fixed",
+        "security",
+        "dependency_update",
+        "other",
     }
 
     def __init__(
@@ -40,7 +40,7 @@ class ChangelogValidator:
         changelog_types: List[str] = None,
         mandatory_fields: List[str] = None,
         forbidden_fields: List[str] = None,
-        optional_fields: List[str] = None
+        optional_fields: List[str] = None,
     ):
         """
         Initialize validator with custom rules
@@ -52,9 +52,11 @@ class ChangelogValidator:
             optional_fields: Allowed fields (if empty, all standard fields allowed)
         """
         self.changelog_types = changelog_types or list(self.STANDARD_TYPES)
-        self.mandatory_fields = mandatory_fields or ['title']
+        self.mandatory_fields = mandatory_fields or ["title"]
         self.forbidden_fields = forbidden_fields or []
-        self.optional_fields = optional_fields or []  # Empty means all standard fields allowed
+        self.optional_fields = (
+            optional_fields or []
+        )  # Empty means all standard fields allowed
 
     def validate(self, yaml_content: str) -> Tuple[bool, List[str]]:
         """
@@ -69,28 +71,28 @@ class ChangelogValidator:
         try:
             entry = yaml.safe_load(yaml_content)
             if not entry:
-                return False, ['YAML is empty']
+                return False, ["YAML is empty"]
 
             if not isinstance(entry, dict):
-                return False, ['YAML must be a dictionary/object']
+                return False, ["YAML must be a dictionary/object"]
 
         except yaml.YAMLError as e:
-            return False, [f'Invalid YAML: {str(e)}']
+            return False, [f"Invalid YAML: {str(e)}"]
 
         # Validate structure
         errors.extend(self._validate_structure(entry))
 
         # Validate types if present
-        if 'type' in entry:
-            errors.extend(self._validate_type(entry['type']))
+        if "type" in entry:
+            errors.extend(self._validate_type(entry["type"]))
 
         # Validate authors if present
-        if 'authors' in entry:
-            errors.extend(self._validate_authors(entry['authors']))
+        if "authors" in entry:
+            errors.extend(self._validate_authors(entry["authors"]))
 
         # Validate configurations if present
-        if 'configurations' in entry:
-            errors.extend(self._validate_configurations(entry['configurations']))
+        if "configurations" in entry:
+            errors.extend(self._validate_configurations(entry["configurations"]))
 
         return len(errors) == 0, errors
 
@@ -101,12 +103,12 @@ class ChangelogValidator:
         # Check mandatory fields
         for field in self.mandatory_fields:
             if field not in entry or entry[field] is None:
-                errors.append(f'Missing mandatory field: {field}')
+                errors.append(f"Missing mandatory field: {field}")
 
         # Check forbidden fields
         for field in self.forbidden_fields:
             if field in entry and entry[field] is not None:
-                errors.append(f'Forbidden field present: {field}')
+                errors.append(f"Forbidden field present: {field}")
 
         # Determine allowed fields
         if self.optional_fields:
@@ -120,11 +122,11 @@ class ChangelogValidator:
         if self.optional_fields:
             for field in entry.keys():
                 if field not in allowed_fields:
-                    errors.append(f'Unknown field: {field}')
+                    errors.append(f"Unknown field: {field}")
 
         # Validate specific field types
-        if 'title' in entry and not isinstance(entry['title'], str):
-            errors.append('title must be a string')
+        if "title" in entry and not isinstance(entry["title"], str):
+            errors.append("title must be a string")
 
         return errors
 
@@ -133,7 +135,7 @@ class ChangelogValidator:
         errors = []
 
         if not isinstance(change_type, str):
-            errors.append('type must be a string')
+            errors.append("type must be a string")
             return errors
 
         if change_type not in self.changelog_types:
@@ -148,16 +150,16 @@ class ChangelogValidator:
         errors = []
 
         if not isinstance(authors, list):
-            errors.append('authors must be a list')
+            errors.append("authors must be a list")
             return errors
 
         for i, author in enumerate(authors):
             if not isinstance(author, dict):
-                errors.append(f'authors[{i}] must be a dictionary')
+                errors.append(f"authors[{i}] must be a dictionary")
                 continue
 
             # Check for required author fields
-            if 'name' not in author or not author['name']:
+            if "name" not in author or not author["name"]:
                 errors.append(f'authors[{i}] missing or empty "name" field')
 
         return errors
@@ -167,38 +169,46 @@ class ChangelogValidator:
         errors = []
 
         if not isinstance(configs, list):
-            errors.append('configurations must be a list')
+            errors.append("configurations must be a list")
             return errors
 
         for i, config in enumerate(configs):
             if not isinstance(config, dict):
-                errors.append(f'configurations[{i}] must be a dictionary')
+                errors.append(f"configurations[{i}] must be a dictionary")
                 continue
 
             # Check required fields
-            required = ['type', 'action', 'key']
+            required = ["type", "action", "key"]
             for field in required:
                 if field not in config or not config[field]:
-                    errors.append(f'configurations[{i}] missing or empty "{field}" field')
+                    errors.append(
+                        f'configurations[{i}] missing or empty "{field}" field'
+                    )
 
             # Validate action
-            if 'action' in config and config['action'] not in ('add', 'update', 'delete'):
-                errors.append(f'configurations[{i}] action must be "add", "update", or "delete"')
+            if "action" in config and config["action"] not in (
+                "add",
+                "update",
+                "delete",
+            ):
+                errors.append(
+                    f'configurations[{i}] action must be "add", "update", or "delete"'
+                )
 
         return errors
 
     def generate_template(self) -> str:
         """Generate a template changelog entry YAML"""
         template = {
-            'title': 'Brief description of the change',
-            'type': self.changelog_types[0] if self.changelog_types else 'added',
-            'authors': [
+            "title": "Brief description of the change",
+            "type": self.changelog_types[0] if self.changelog_types else "added",
+            "authors": [
                 {
-                    'name': 'Author Name',
-                    'nick': 'author-nick',
-                    'url': 'https://github.com/author'
+                    "name": "Author Name",
+                    "nick": "author-nick",
+                    "url": "https://github.com/author",
                 }
-            ]
+            ],
         }
 
         return yaml.dump(template, default_flow_style=False, sort_keys=False)

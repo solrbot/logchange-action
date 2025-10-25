@@ -4,7 +4,7 @@ import sys
 import os
 
 # Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'action', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
 from pr_metadata_extractor import PRMetadataExtractor
 
@@ -23,13 +23,13 @@ class TestPRMetadataExtractor:
     def jira_extractor(self):
         """Create extractor with JIRA support"""
         return PRMetadataExtractor(
-            external_issue_regex=r'JIRA-(\d+)',
-            external_issue_url_template='https://jira.example.com/browse/JIRA-{id}'
+            external_issue_regex=r"JIRA-(\d+)",
+            external_issue_url_template="https://jira.example.com/browse/JIRA-{id}",
         )
 
     def test_extract_merge_request_number(self, basic_extractor):
         """Test extracting PR number"""
-        pr_info = {'number': 123}
+        pr_info = {"number": 123}
         pr_number = basic_extractor.extract_merge_request_number(pr_info)
         assert pr_number == 123
 
@@ -75,8 +75,8 @@ class TestPRMetadataExtractor:
         """Test extracting URLs"""
         text = "See https://example.com and http://test.org for more info"
         urls = basic_extractor.extract_urls(text)
-        assert 'https://example.com' in urls
-        assert 'http://test.org' in urls
+        assert "https://example.com" in urls
+        assert "http://test.org" in urls
 
     def test_extract_urls_multiple(self, basic_extractor):
         """Test extracting multiple URLs"""
@@ -98,8 +98,8 @@ class TestPRMetadataExtractor:
         text = "Related to JIRA-123 and JIRA-456"
         issues = jira_extractor.extract_external_issues(text)
         assert len(issues) == 2
-        assert issues[0][0] == '123'
-        assert 'jira.example.com' in issues[0][1]
+        assert issues[0][0] == "123"
+        assert "jira.example.com" in issues[0][1]
 
     def test_extract_external_issues_disabled(self, basic_extractor):
         """Test that external issues not extracted when disabled"""
@@ -112,62 +112,62 @@ class TestPRMetadataExtractor:
         text = "JIRA-100 JIRA-100 JIRA-100"
         issues = jira_extractor.extract_external_issues(text)
         assert len(issues) == 1
-        assert issues[0][0] == '100'
+        assert issues[0][0] == "100"
 
     def test_extract_all_metadata_complete(self, jira_extractor):
         """Test extracting all metadata together"""
-        pr_info = {'number': 42, 'body': 'Fixes #100 Related to JIRA-123'}
+        pr_info = {"number": 42, "body": "Fixes #100 Related to JIRA-123"}
         metadata = jira_extractor.extract_all_metadata(pr_info)
 
-        assert metadata['merge_requests'] == [42]
-        assert 100 in metadata['issues']
-        assert any(issue[0] == '123' for issue in metadata['links'])
+        assert metadata["merge_requests"] == [42]
+        assert 100 in metadata["issues"]
+        assert any(issue[0] == "123" for issue in metadata["links"])
 
     def test_extract_all_metadata_with_additional_text(self, jira_extractor):
         """Test extracting metadata with additional text"""
-        pr_info = {'number': 1, 'body': ''}
+        pr_info = {"number": 1, "body": ""}
         additional_text = "Legacy entry mentions #500 and JIRA-200"
         metadata = jira_extractor.extract_all_metadata(pr_info, additional_text)
 
-        assert metadata['merge_requests'] == [1]
-        assert 500 in metadata['issues']
-        assert any(issue[0] == '200' for issue in metadata['links'])
+        assert metadata["merge_requests"] == [1]
+        assert 500 in metadata["issues"]
+        assert any(issue[0] == "200" for issue in metadata["links"])
 
     def test_extract_all_metadata_empty(self, basic_extractor):
         """Test extracting from empty PR"""
         pr_info = {}
         metadata = basic_extractor.extract_all_metadata(pr_info)
 
-        assert metadata['merge_requests'] == []
-        assert metadata['issues'] == []
-        assert metadata['links'] == []
+        assert metadata["merge_requests"] == []
+        assert metadata["issues"] == []
+        assert metadata["links"] == []
 
     def test_build_metadata_section_complete(self, jira_extractor):
         """Test building metadata section"""
         metadata = {
-            'merge_requests': [42],
-            'issues': [100, 200],
-            'links': [('JIRA-123', 'https://jira.example.com/browse/JIRA-123')]
+            "merge_requests": [42],
+            "issues": [100, 200],
+            "links": [("JIRA-123", "https://jira.example.com/browse/JIRA-123")],
         }
         section = jira_extractor.build_metadata_section(metadata)
 
-        assert '#42' in section
-        assert '#100' in section
-        assert '#200' in section
-        assert 'JIRA-123' in section
+        assert "#42" in section
+        assert "#100" in section
+        assert "#200" in section
+        assert "JIRA-123" in section
 
     def test_build_metadata_section_empty(self, basic_extractor):
         """Test building metadata section when empty"""
-        metadata = {'merge_requests': [], 'issues': [], 'links': []}
+        metadata = {"merge_requests": [], "issues": [], "links": []}
         section = basic_extractor.build_metadata_section(metadata)
 
-        assert 'No additional metadata' in section
+        assert "No additional metadata" in section
 
     def test_external_issue_regex_invalid(self):
         """Test with invalid regex pattern"""
         extractor = PRMetadataExtractor(
-            external_issue_regex='[invalid(regex',
-            external_issue_url_template='https://example.com/{id}'
+            external_issue_regex="[invalid(regex",
+            external_issue_url_template="https://example.com/{id}",
         )
         # Should have compiled_regex = None
         assert extractor.compiled_regex is None
@@ -200,33 +200,36 @@ class TestPRMetadataExtractor:
         text = "See https://example.com and https://docs.test.org"
         urls = extractor.extract_urls(text)
         assert len(urls) == 2
-        assert 'https://example.com' in urls
-        assert 'https://docs.test.org' in urls
+        assert "https://example.com" in urls
+        assert "https://docs.test.org" in urls
 
     def test_extract_all_metadata_with_detection_disabled(self):
         """Test metadata extraction with GitHub issues disabled"""
         extractor = PRMetadataExtractor(github_issue_detection=False)
-        pr_info = {'number': 42, 'body': 'Fixes #100 and #200'}
+        pr_info = {"number": 42, "body": "Fixes #100 and #200"}
         metadata = extractor.extract_all_metadata(pr_info)
 
-        assert metadata['merge_requests'] == [42]
-        assert metadata['issues'] == []  # GitHub issues not extracted
+        assert metadata["merge_requests"] == [42]
+        assert metadata["issues"] == []  # GitHub issues not extracted
 
     def test_extract_all_metadata_both_trackers_disabled(self):
         """Test that no tracker URLs extracted when disabled"""
         extractor = PRMetadataExtractor(
             issue_tracker_url_detection=False,
-            external_issue_regex=r'JIRA-(\d+)',
-            external_issue_url_template='https://jira.example.com/browse/JIRA-{id}'
+            external_issue_regex=r"JIRA-(\d+)",
+            external_issue_url_template="https://jira.example.com/browse/JIRA-{id}",
         )
-        pr_info = {'number': 1, 'body': 'Related to JIRA-123 see https://docs.example.com'}
+        pr_info = {
+            "number": 1,
+            "body": "Related to JIRA-123 see https://docs.example.com",
+        }
         metadata = extractor.extract_all_metadata(pr_info)
 
         # External issues still extracted (different flag)
-        assert any(issue[0] == '123' for issue in metadata['links'])
+        assert any(issue[0] == "123" for issue in metadata["links"])
         # Generic URLs not extracted when disabled
-        assert not any('docs.example.com' in url for _, url in metadata['links'])
+        assert not any("docs.example.com" in url for _, url in metadata["links"])
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

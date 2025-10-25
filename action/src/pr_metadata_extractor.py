@@ -36,9 +36,9 @@ class PRMetadataExtractor:
         if external_issue_regex:
             try:
                 self.compiled_regex = re.compile(external_issue_regex)
-                logger.info(f'External issue regex compiled: {external_issue_regex}')
+                logger.info(f"External issue regex compiled: {external_issue_regex}")
             except re.error as e:
-                logger.error(f'Invalid external issue regex: {e}')
+                logger.error(f"Invalid external issue regex: {e}")
                 self.compiled_regex = None
         else:
             self.compiled_regex = None
@@ -53,9 +53,9 @@ class PRMetadataExtractor:
         Returns:
             PR number or None
         """
-        pr_number = pr_info.get('number')
+        pr_number = pr_info.get("number")
         if pr_number:
-            logger.debug(f'Extracted PR number: {pr_number}')
+            logger.debug(f"Extracted PR number: {pr_number}")
         return pr_number
 
     def extract_github_issues(self, text: str) -> List[int]:
@@ -78,12 +78,12 @@ class PRMetadataExtractor:
             return []
 
         # Pattern: #number or words like "fixes #123"
-        pattern = r'(?:closes|closes|fixes|fixed|resolves|resolved|references|refs|see|issue|issues)?\s*#(\d+)'
+        pattern = r"(?:closes|closes|fixes|fixed|resolves|resolved|references|refs|see|issue|issues)?\s*#(\d+)"
         matches = re.findall(pattern, text, re.IGNORECASE)
         issues = list(set(int(m) for m in matches))
 
         if issues:
-            logger.debug(f'Extracted GitHub issues: {issues}')
+            logger.debug(f"Extracted GitHub issues: {issues}")
 
         return sorted(issues)
 
@@ -105,11 +105,11 @@ class PRMetadataExtractor:
             return []
 
         # Simple URL pattern
-        url_pattern = r'https?://[^\s\)>\]<]+'
+        url_pattern = r"https?://[^\s\)>\]<]+"
         urls = list(set(re.findall(url_pattern, text)))
 
         if urls:
-            logger.debug(f'Extracted URLs: {urls}')
+            logger.debug(f"Extracted URLs: {urls}")
 
         return urls
 
@@ -153,14 +153,12 @@ class PRMetadataExtractor:
                 seen.add(issue[0])
 
         if unique_issues:
-            logger.debug(f'Extracted external issues: {unique_issues}')
+            logger.debug(f"Extracted external issues: {unique_issues}")
 
         return unique_issues
 
     def extract_all_metadata(
-        self,
-        pr_info: Dict[str, Any],
-        additional_text: Optional[str] = None
+        self, pr_info: Dict[str, Any], additional_text: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Extract all metadata from PR
@@ -176,30 +174,30 @@ class PRMetadataExtractor:
             - links: List of (name, url) tuples
         """
         # Combine PR description and additional text
-        text_to_search = pr_info.get('body', '') or ''
+        text_to_search = pr_info.get("body", "") or ""
         if additional_text:
-            text_to_search = f'{text_to_search}\n{additional_text}'
+            text_to_search = f"{text_to_search}\n{additional_text}"
 
         metadata = {
-            'merge_requests': [],
-            'issues': [],
-            'links': [],
+            "merge_requests": [],
+            "issues": [],
+            "links": [],
         }
 
         # Extract PR number (merge request)
         pr_number = self.extract_merge_request_number(pr_info)
         if pr_number:
-            metadata['merge_requests'] = [pr_number]
+            metadata["merge_requests"] = [pr_number]
 
         # Extract GitHub issues
         github_issues = self.extract_github_issues(text_to_search)
         if github_issues:
-            metadata['issues'] = github_issues
+            metadata["issues"] = github_issues
 
         # Extract external issues as links
         external_issues = self.extract_external_issues(text_to_search)
         if external_issues:
-            metadata['links'].extend(external_issues)
+            metadata["links"].extend(external_issues)
 
         # Extract other URLs
         urls = self.extract_urls(text_to_search)
@@ -208,10 +206,10 @@ class PRMetadataExtractor:
         for url in urls:
             if url not in jira_urls:
                 # Use domain as name if no better option
-                name = url.split('/')[-1] or url.split('/')[-2]
-                metadata['links'].append((name, url))
+                name = url.split("/")[-1] or url.split("/")[-2]
+                metadata["links"].append((name, url))
 
-        logger.debug(f'Extracted metadata: {metadata}')
+        logger.debug(f"Extracted metadata: {metadata}")
         return metadata
 
     def build_metadata_section(self, metadata: Dict[str, Any]) -> str:
@@ -228,21 +226,19 @@ class PRMetadataExtractor:
         """
         sections = []
 
-        if metadata.get('merge_requests'):
-            mr_list = ', '.join(f'#{mr}' for mr in metadata['merge_requests'])
-            sections.append(f'Merge Requests: {mr_list}')
+        if metadata.get("merge_requests"):
+            mr_list = ", ".join(f"#{mr}" for mr in metadata["merge_requests"])
+            sections.append(f"Merge Requests: {mr_list}")
 
-        if metadata.get('issues'):
-            issue_list = ', '.join(f'#{issue}' for issue in metadata['issues'])
-            sections.append(f'Related Issues: {issue_list}')
+        if metadata.get("issues"):
+            issue_list = ", ".join(f"#{issue}" for issue in metadata["issues"])
+            sections.append(f"Related Issues: {issue_list}")
 
-        if metadata.get('links'):
-            link_list = ', '.join(
-                f'[{name}]({url})' for name, url in metadata['links']
-            )
-            sections.append(f'Links: {link_list}')
+        if metadata.get("links"):
+            link_list = ", ".join(f"[{name}]({url})" for name, url in metadata["links"])
+            sections.append(f"Links: {link_list}")
 
         if not sections:
-            return 'No additional metadata found.'
+            return "No additional metadata found."
 
-        return '\n'.join(f'- {s}' for s in sections)
+        return "\n".join(f"- {s}" for s in sections)
