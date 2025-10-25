@@ -122,7 +122,7 @@ class ActionTestCLI:
             logger.info(f"Loading system prompt from: {args.system_prompt}")
             system_prompt = self.load_file(args.system_prompt)
 
-        # Create and run generator
+        # Create generator and validator
         logger.info(f"Initializing generator (model: {args.model})")
         generator = ChangelogGenerator(
             api_key=token,
@@ -138,22 +138,36 @@ class ActionTestCLI:
             external_issue_url_template=args.external_issue_url_template,
         )
 
+        logger.info("Initializing validator")
+        validator = ChangelogValidator(
+            mandatory_fields=mandatory_fields or ["title"],
+            forbidden_fields=forbidden_fields,
+            changelog_types=changelog_types,
+        )
+
         logger.info("=" * 80)
         logger.info("GENERATING CHANGELOG ENTRY")
         logger.info("=" * 80)
 
-        generated = generator.generate(diff, pr_info)
+        # Use validation-driven generation with automatic retry logic
+        generated_entry, is_valid, message = generator.generate_with_validation(
+            diff, pr_info, validator
+        )
 
-        if generated:
+        print("\n" + "=" * 80)
+        if generated_entry and is_valid:
             logger.info("✅ Generation successful")
-            print("\n" + "=" * 80)
             print("GENERATED CHANGELOG ENTRY:")
             print("=" * 80)
-            print(generated)
+            print(generated_entry)
             print("=" * 80)
             return 0
         else:
-            logger.error("❌ Generation failed")
+            logger.error(f"❌ Generation failed: {message}")
+            print("GENERATION FAILED:")
+            print("=" * 80)
+            print(f"Reason: {message}")
+            print("=" * 80)
             return 1
 
     def cmd_validate(self, args):
