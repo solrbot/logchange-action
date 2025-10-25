@@ -395,7 +395,8 @@ class LogchangeAction:
         if not self.generator:
             logger.warning(f"Generator not available for {context_name}")
             self.github_client.comment_on_pr(
-                f"⚠️ {context_name} generation requested but generator not available"
+                "⚠️ Changelog generation is currently unavailable.\n\n"
+                "Please try again with your next commit."
             )
             self.set_output("generation-error", "Generator not available")
             return None
@@ -420,8 +421,8 @@ class LogchangeAction:
                     f"{context_name} generation failed: {validation_message}"
                 )
                 self.github_client.comment_on_pr(
-                    f"⚠️ {context_name} generation failed\n\n"
-                    f"*(Reason: {validation_message})*"
+                    "⚠️ Changelog generation encountered some issues.\n\n"
+                    "No worries! Please try again with your next commit."
                 )
                 self.set_output("generation-error", validation_message)
                 return None
@@ -429,7 +430,8 @@ class LogchangeAction:
             if not is_valid:
                 logger.error(f"Generated {context_name} invalid: {validation_message}")
                 self.github_client.comment_on_pr(
-                    f"⚠️ Generated {context_name} failed validation"
+                    "⚠️ Changelog generation encountered some issues.\n\n"
+                    "No worries! Please try again with your next commit."
                 )
                 self.set_output("generation-error", "Validation failed")
                 return None
@@ -445,7 +447,8 @@ class LogchangeAction:
         except GenerationError as e:
             logger.warning(f"{context_name} generation error: {e}")
             self.github_client.comment_on_pr(
-                f"⚠️ {context_name} generation failed: {str(e)}"
+                "⚠️ Changelog generation encountered some issues.\n\n"
+                "No worries! Please try again with your next commit."
             )
             self.set_output("generation-error", str(e))
             return None
