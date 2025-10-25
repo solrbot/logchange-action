@@ -218,4 +218,4 @@ See [logchange docs](https://logchange.dev/) for complete specification and addi
 
 ## License
 
-Apache 2.0, see `LICENSE` file.
+Apache 2.0, see the `LICENSE` file.
