@@ -1,0 +1,30 @@
+name: Changelog Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Changelog
+        uses: solrbot/logchange-action@v1
+        with:
+          # Optional: configure the changelog path (default: changelog/unreleased)
+          changelog-path: changelog/unreleased
+
+          # Optional: what to do when entry is missing (default: fail)
+          # Options: fail, warn, generate
+          on-missing-entry: fail
+
+          # Optional: skip changelog for docs-only changes
+          # skip-files-regex: '^(README\.md|docs/|\.github/)'
+
+          # Optional: for AI generation, provide Claude token
+          # on-missing-entry: generate
+          # claude-token: ${{ secrets.CLAUDE_API_KEY }}
+          # claude-language: English

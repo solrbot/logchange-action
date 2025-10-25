@@ -1,0 +1,13 @@
+# Basic workflow - fail if changelog entry is missing
+name: Changelog Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: solrbot/logchange-action@v1

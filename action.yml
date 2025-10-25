@@ -1,0 +1,157 @@
+name: 'Logchange Action'
+description: 'Ensure your pull requests include logchange changelog entries, with AI-powered generation support'
+author: 'solrbot'
+
+inputs:
+  changelog-path:
+    description: 'Path to the changelog/unreleased directory'
+    required: false
+    default: 'changelog/unreleased'
+
+  on-missing-entry:
+    description: 'Action to take when changelog entry is missing: "fail", "warn", or "generate"'
+    required: false
+    default: 'fail'
+
+  missing-entry-message:
+    description: 'Custom message to display when changelog entry is missing'
+    required: false
+    default: 'This pull request is missing a logchange entry in the changelog/unreleased directory'
+
+  skip-files-regex:
+    description: 'If all edited files match this regex pattern, skip changelog requirement'
+    required: false
+    default: ''
+
+  claude-token:
+    description: 'Claude API token for AI-powered changelog generation (required if on-missing-entry is "generate")'
+    required: false
+
+  claude-model:
+    description: 'Claude model to use for generation'
+    required: false
+    default: 'claude-3-5-sonnet-20241022'
+
+  claude-system-prompt:
+    description: 'Custom system prompt for Claude changelog generation'
+    required: false
+
+  changelog-language:
+    description: 'Language to write the generated changelog entry in'
+    required: false
+    default: 'English'
+
+  max-tokens-context:
+    description: 'Maximum tokens to use for PR diff context'
+    required: false
+    default: '5000'
+
+  max-tokens-per-file:
+    description: 'Maximum tokens per file when truncating diff'
+    required: false
+    default: '1000'
+
+  changelog-types:
+    description: 'Comma-separated list of allowed changelog types (JSON format)'
+    required: false
+    default: 'added,changed,deprecated,removed,fixed,security,dependency_update,other'
+
+  mandatory-fields:
+    description: 'Comma-separated list of mandatory fields in changelog entry'
+    required: false
+    default: 'title'
+
+  forbidden-fields:
+    description: 'Comma-separated list of forbidden fields in changelog entry'
+    required: false
+    default: ''
+
+  optional-fields:
+    description: 'Comma-separated list of optional fields (empty means all standard fields allowed)'
+    required: false
+    default: ''
+
+  legacy-changelog-paths:
+    description: 'Comma-separated list of legacy changelog file paths to detect (e.g., CHANGELOG.md,HISTORY.txt). DISABLED by default (empty string). Set to enable legacy changelog detection and conversion.'
+    required: false
+    default: ''
+
+  on-legacy-entry:
+    description: 'Action when legacy changelog entry found without logchange entry: "convert", "warn", or "fail"'
+    required: false
+    default: 'convert'
+
+  on-legacy-and-logchange:
+    description: 'Action when both legacy and logchange entries in same PR: "fail", "warn", or "ignore"'
+    required: false
+    default: 'warn'
+
+  legacy-entry-message:
+    description: 'Custom message when legacy changelog entry is found'
+    required: false
+    default: 'I detected a legacy changelog entry. Converting it to logchange format...'
+
+  legacy-conflict-message:
+    description: 'Custom message when both legacy and logchange entries are present'
+    required: false
+    default: 'This PR contains both legacy and logchange changelog entries. Please use only logchange format.'
+
+  external-issue-regex:
+    description: 'Regex pattern to detect external issue references (e.g., JIRA-123). Must have capture group for issue ID. Example: "JIRA-(\d+)"'
+    required: false
+    default: ''
+
+  external-issue-url-template:
+    description: 'URL template for external issues with {id} placeholder. Example: "https://jira.example.com/browse/{id}"'
+    required: false
+    default: ''
+
+  generate-important-notes:
+    description: 'Whether to instruct AI to generate important_notes in changelog entries (default: true)'
+    required: false
+    default: 'true'
+
+  github-issue-detection:
+    description: 'Whether to detect GitHub issue references (#123) in PR description (default: true)'
+    required: false
+    default: 'true'
+
+  issue-tracker-url-detection:
+    description: 'Whether to detect issue tracker URLs (via LLM filtering) in PR description. Only URLs matching configured external issue trackers are added as links (default: true)'
+    required: false
+    default: 'true'
+
+  validation-fail-message:
+    description: 'Custom message to display when changelog entry validation fails'
+    required: false
+    default: 'The changelog entry does not comply with the required format'
+
+  validation-fail-workflow:
+    description: 'Whether to fail the workflow on validation errors or just comment'
+    required: false
+    default: 'true'
+
+outputs:
+  changelog-found:
+    description: 'Whether a changelog entry was found'
+  changelog-valid:
+    description: 'Whether the changelog entry is valid'
+  changelog-generated:
+    description: 'Whether a changelog entry was generated'
+  legacy-entry-found:
+    description: 'Whether a legacy changelog entry was found'
+  legacy-converted:
+    description: 'Whether a legacy entry was converted to logchange format'
+  legacy-conflict:
+    description: 'Whether both legacy and logchange entries were found'
+  generation-error:
+    description: 'Error message if generation failed'
+
+runs:
+  using: 'docker'
+  image: 'docker://python:3.11-slim'
+  entrypoint: '/action/src/entrypoint.sh'
+
+branding:
+  icon: 'package'
+  color: 'blue'
