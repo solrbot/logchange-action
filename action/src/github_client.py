@@ -256,3 +256,59 @@ class GitHubClient:
             # If we can't check, assume there are no existing comments
             # (better to post a duplicate than to skip a valid suggestion)
             return False
+
+    def create_review_comment_with_suggestion(
+        self,
+        commit_sha: str,
+        file_path: str,
+        line: int,
+        body: str,
+        suggestion: str = "",
+    ) -> bool:
+        """
+        Create a review comment on a specific line with optional suggested changes.
+
+        Args:
+            commit_sha: The commit SHA where the comment should be posted
+            file_path: Path to the file in the PR
+            line: Line number (in the new version of the file)
+            body: The comment text
+            suggestion: Optional suggested replacement text (for "suggest edits" feature)
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.pr_number:
+            logger.warning("No PR number found")
+            return False
+
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
+
+        # Build the comment payload
+        comment_data = {
+            "path": file_path,
+            "line": line,
+            "body": body,
+        }
+
+        # If suggestion provided, add it in the format for suggested changes
+        if suggestion:
+            comment_data["suggestion"] = suggestion
+
+        payload = {
+            "body": "Review with suggested changes",
+            "event": "COMMENT",
+            "comments": [comment_data],
+        }
+
+        try:
+            response = self.session.post(url, json=payload)
+            response.raise_for_status()
+            logger.info(
+                f"Successfully created review comment with suggestion on line {line}"
+            )
+            return True
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create review comment: {e}")
+            return False

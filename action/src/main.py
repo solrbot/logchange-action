@@ -554,6 +554,14 @@ Here's the suggested entry for `{file_path}`:
 
             logger.info(f"Extracted {len(entry_text)} characters from legacy changelog")
 
+            # Extract line numbers for suggested removal
+            added_lines = self.legacy_handler.extract_added_lines_with_positions(
+                pr_diff, legacy_file
+            )
+            logger.info(
+                f"Found {len(added_lines)} added lines in legacy changelog diff"
+            )
+
             # Build context about the legacy entry
             context = self.legacy_handler.build_legacy_context(entry_text)
             logger.info(f"Legacy entry context: {context}")
@@ -586,7 +594,22 @@ Here's the suggested entry for `{file_path}`:
                 self.set_output("legacy-converted", "false")
                 return 0
 
-            # Post the converted entry as a suggestion
+            # Post review comments with suggested removal of legacy changelog lines
+            commit_sha = pr_info.get("head", {}).get("sha", "")
+            if added_lines and commit_sha:
+                logger.info(
+                    f"Creating review with suggested removal for {len(added_lines)} lines"
+                )
+                for line_num, line_content in added_lines:
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        line=line_num,
+                        body="This line was converted to logchange format. You can remove it.",
+                        suggestion="",  # Empty suggestion means remove the line
+                    )
+
+            # Post the converted entry as a regular comment
             suggestion_comment = self._format_legacy_conversion_comment(
                 generated_entry, legacy_file
             )
@@ -632,9 +655,9 @@ I detected a change to `{legacy_file}` and converted it to the logchange format 
    - Create a new file at `{file_path}`
    - Copy the YAML above into it
 
-2. ⚠️ **Revert** the legacy change:
-   - Remove or revert your changes to `{legacy_file}`
-   - OR update `{legacy_file}` to not include this entry (if it has multiple)
+2. ⚠️ **Remove** the legacy changes:
+   - I've added suggested edits to remove the lines you added to `{legacy_file}`
+   - Review the suggestions in the PR review and accept them
 
 3. 📝 **Review** before merging:
    - Check the generated entry is accurate
