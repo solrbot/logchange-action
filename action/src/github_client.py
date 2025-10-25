@@ -264,17 +264,20 @@ class GitHubClient:
         line: int,
         body: str,
         suggestion: str = "",
+        start_line: int = None,
     ) -> bool:
         """
         Create a review comment on a specific line with optional suggested changes.
+        Supports multi-line comments.
 
         Args:
             commit_sha: The commit SHA where the comment should be posted
             file_path: Path to the file in the PR
-            line: Line number (in the new version of the file)
+            line: Line number (in the new version of the file, or end line for multi-line)
             body: The comment text (markdown format with suggestion syntax if applicable)
             suggestion: Optional suggested replacement text (for "suggest edits" feature).
                        Use "```suggestion\n<content>\n```" format in body instead.
+            start_line: Optional start line for multi-line comments (if None, single line comment)
 
         Returns:
             True if successful, False otherwise
@@ -283,23 +286,24 @@ class GitHubClient:
             logger.warning("No PR number found")
             return False
 
-        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/comments"
 
         # Build the comment payload
         comment_data = {
+            "body": body,
+            "commit_id": commit_sha,
             "path": file_path,
             "line": line,
-            "body": body,
+            "side": "RIGHT",  # Comment on the new version of the file
         }
 
-        payload = {
-            "body": "Review with suggested changes",
-            "event": "COMMENT",
-            "comments": [comment_data],
-        }
+        # Add start_line and start_side for multi-line comments
+        if start_line is not None:
+            comment_data["start_line"] = start_line
+            comment_data["start_side"] = "RIGHT"
 
         try:
-            response = self.session.post(url, json=payload)
+            response = self.session.post(url, json=comment_data)
             response.raise_for_status()
             logger.info(
                 f"Successfully created review comment with suggestion on line {line}"
@@ -308,4 +312,7 @@ class GitHubClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to create review comment: {e}")
+            # Log response content for debugging errors
+            if hasattr(e.response, 'text'):
+                logger.debug(f"GitHub API response: {e.response.text}")
             return False

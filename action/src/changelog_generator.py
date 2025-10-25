@@ -394,6 +394,9 @@ Use the MOST SPECIFIC type from the allowed list above. Examples for common type
                 else:
                     return None, False, "Failed to generate valid YAML after retries"
 
+            # Log the generated entry for debugging
+            logger.debug(f"Generated entry (attempt {attempt}):\n{generated_entry}")
+
             # Validate the generated entry
             is_valid, validation_errors = validator.validate(generated_entry)
 
@@ -408,10 +411,16 @@ Use the MOST SPECIFIC type from the allowed list above. Examples for common type
             # Entry invalid - log errors and retry if attempts remain
             error_message = "; ".join(validation_errors)
             logger.warning(f"Validation failed on attempt {attempt}: {error_message}")
+            logger.warning(
+                f"Generated YAML that failed validation (attempt {attempt}):\n{generated_entry}"
+            )
 
             if attempt <= max_retries:
                 logger.info(
                     f"Retrying with validation feedback... (attempt {attempt + 1})"
+                )
+                logger.info(
+                    f"Validation feedback for retry: {'; '.join(validation_errors)}"
                 )
                 continue
             else:
@@ -453,14 +462,14 @@ Try again, ensuring your output addresses each validation error above."""
 
         if original_prompt:
             # If there was a custom prompt, append retry context to it
-            return f"{original_prompt}\n\n{retry_context}"
+            retry_prompt = f"{original_prompt}\n\n{retry_context}"
         else:
             # Otherwise, build a complete prompt with the diff and retry context
             pr_title = pr_info.get("title", "")
             pr_body = pr_info.get("body", "")
             pr_author = pr_info.get("user", {}).get("login", "unknown")
 
-            return f"""Generate a logchange-formatted YAML changelog entry for this PR.
+            retry_prompt = f"""Generate a logchange-formatted YAML changelog entry for this PR.
 
 PR Title: {pr_title}
 
@@ -477,6 +486,9 @@ Changes:
 {retry_context}
 
 Output ONLY the corrected YAML with no additional text."""
+
+        logger.debug(f"Retry prompt:\n{retry_prompt}")
+        return retry_prompt
 
     def _extract_yaml(self, text: str) -> str:
         """Extract YAML from markdown code blocks if present"""

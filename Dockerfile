@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size
-FROM python:3.11-slim AS builder
+FROM python:3-slim AS builder
 
 WORKDIR /build
 
@@ -8,7 +8,7 @@ COPY action/src/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Final stage
-FROM python:3.11-slim
+FROM python:3-slim
 
 WORKDIR /action
 

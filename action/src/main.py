@@ -203,6 +203,19 @@ class LogchangeAction:
 
             logger.info("Starting logchange action")
 
+            # Early exit: if generation is enabled, check for existing suggestion before
+            # doing expensive file operations
+            if (
+                self.on_missing_entry == "generate"
+                and self._has_existing_suggestion()
+            ):
+                logger.info(
+                    "Changelog suggestion already exists on this PR, skipping all operations"
+                )
+                self.set_output("changelog-found", "false")
+                self.set_output("changelog-generated", "false")
+                return 0
+
             # Get PR files
             pr_files = self.github_client.get_pr_files()
             logger.info(f"Found {len(pr_files)} files in PR")
@@ -380,7 +393,6 @@ class LogchangeAction:
         - Calling generate_with_validation
         - Checking for generation failures
         - Checking for validation failures
-        - Checking for duplicate suggestions
         - Posting error comments
         - Setting error outputs
 
@@ -395,7 +407,8 @@ class LogchangeAction:
         if not self.generator:
             logger.warning(f"Generator not available for {context_name}")
             self.github_client.comment_on_pr(
-                f"⚠️ {context_name} generation requested but generator not available"
+                "⚠️ Changelog generation is currently unavailable.\n\n"
+                "Please try again with your next commit."
             )
             self.set_output("generation-error", "Generator not available")
             return None
@@ -420,8 +433,8 @@ class LogchangeAction:
                     f"{context_name} generation failed: {validation_message}"
                 )
                 self.github_client.comment_on_pr(
-                    f"⚠️ {context_name} generation failed\n\n"
-                    f"*(Reason: {validation_message})*"
+                    "⚠️ Changelog generation encountered some issues.\n\n"
+                    "No worries! Please try again with your next commit."
                 )
                 self.set_output("generation-error", validation_message)
                 return None
@@ -429,14 +442,10 @@ class LogchangeAction:
             if not is_valid:
                 logger.error(f"Generated {context_name} invalid: {validation_message}")
                 self.github_client.comment_on_pr(
-                    f"⚠️ Generated {context_name} failed validation"
+                    "⚠️ Changelog generation encountered some issues.\n\n"
+                    "No worries! Please try again with your next commit."
                 )
                 self.set_output("generation-error", "Validation failed")
-                return None
-
-            # Check for duplicate suggestion
-            if self._has_existing_suggestion():
-                logger.info(f"{context_name} suggestion already exists, skipping")
                 return None
 
             logger.info(f"{context_name} generated and validated successfully")
@@ -445,7 +454,8 @@ class LogchangeAction:
         except GenerationError as e:
             logger.warning(f"{context_name} generation error: {e}")
             self.github_client.comment_on_pr(
-                f"⚠️ {context_name} generation failed: {str(e)}"
+                "⚠️ Changelog generation encountered some issues.\n\n"
+                "No worries! Please try again with your next commit."
             )
             self.set_output("generation-error", str(e))
             return None
@@ -647,19 +657,34 @@ Here's the suggested entry for `{file_path}`:
                 )
 
                 for start_line, end_line, group_content in line_groups:
-                    # Format the suggestion with markdown syntax for removal
-                    suggestion_body = (
-                        "This was converted to logchange format. Let's remove it.\n\n"
-                        "```suggestion\n"
-                        "```"
-                    )
+                    is_single_line = start_line == end_line
 
-                    self.github_client.create_review_comment_with_suggestion(
-                        commit_sha=commit_sha,
-                        file_path=legacy_file,
-                        line=end_line,  # Post on the last line of the group
-                        body=suggestion_body,
-                    )
+                    if is_single_line:
+                        # For single-line removals, use GitHub's suggestion syntax
+                        suggestion_body = (
+                            "This was converted to logchange format. Let's remove it.\n\n"
+                            "```suggestion\n"
+                            "```"
+                        )
+                        self.github_client.create_review_comment_with_suggestion(
+                            commit_sha=commit_sha,
+                            file_path=legacy_file,
+                            line=end_line,
+                            body=suggestion_body,
+                        )
+                    else:
+                        # For multi-line removals, post a regular comment on the last line
+                        # (GitHub's multi-line suggestion API has limitations)
+                        suggestion_body = (
+                            f"Lines {start_line}-{end_line}: This was converted to logchange format. "
+                            "Please remove these lines."
+                        )
+                        self.github_client.create_review_comment_with_suggestion(
+                            commit_sha=commit_sha,
+                            file_path=legacy_file,
+                            line=end_line,
+                            body=suggestion_body,
+                        )
 
             # Post the converted entry as a regular comment
             suggestion_comment = self._format_legacy_conversion_comment(
@@ -691,9 +716,9 @@ Here's the suggested entry for `{file_path}`:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""🔄 **I've converted the legacy changelog entry to logchange format!**
+        return f"""🔄 **I've converted the changelog entry to logchange format!**
 
-I detected a change to `{legacy_file}` and converted it to the logchange format below.
+I detected changes to `{legacy_file}` and converted them to the logchange format below.
 
 **Suggested Logchange Entry** for `{file_path}`:
 
@@ -707,7 +732,7 @@ I detected a change to `{legacy_file}` and converted it to the logchange format 
    - Create a new file at `{file_path}`
    - Copy the YAML above into it
 
-2. ⚠️ **Remove** the legacy changes:
+2. ⚠️ **Remove** the original entry:
    - I've added suggested edits to remove the lines you added to `{legacy_file}`
    - Review the suggestions in the PR review and accept them
 
@@ -717,7 +742,7 @@ I detected a change to `{legacy_file}` and converted it to the logchange format 
    - Feel free to edit the logchange YAML
 
 **Why?**
-This project uses logchange format for changelog entries, not the traditional {legacy_file} format. Using logchange ensures consistency and better tooling support.
+This project uses logchange format for changelog entries. Using logchange ensures consistency and better tooling support across all changelog entries.
 """
 
 
