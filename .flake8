@@ -8,5 +8,5 @@ exclude = .git,__pycache__,.venv,venv,build,dist
 per-file-ignores =
     action/src/changelog_generator.py: E501
     action/src/main.py: E501
-    test_generator.py: C901
+    test_action_cli.py: C901
     tests/*: C901

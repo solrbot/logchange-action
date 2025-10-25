@@ -30,7 +30,7 @@ jobs:
       - name: Verify Python syntax
         run: |
           python3 -m py_compile action/src/*.py
-          python3 -m py_compile test_generator.py
+          python3 -m py_compile test_action_cli.py
           python3 -m py_compile tests/*.py
 
       - name: Run unit tests
@@ -70,17 +70,17 @@ jobs:
 
       - name: Check code formatting with black
         run: |
-          black --check action/src/ tests/ test_generator.py
+          black --check action/src/ tests/ test_action_cli.py
 
       - name: Check import sorting with isort
         run: |
-          isort --check-only action/src/ tests/ test_generator.py
+          isort --check-only action/src/ tests/ test_action_cli.py
 
       - name: Lint with flake8
         run: |
-          flake8 action/src/ tests/ test_generator.py \
+          flake8 action/src/ tests/ test_action_cli.py \
             --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 action/src/ tests/ test_generator.py \
+          flake8 action/src/ tests/ test_action_cli.py \
             --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
   docker-build:
