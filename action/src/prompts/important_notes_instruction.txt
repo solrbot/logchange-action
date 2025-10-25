@@ -1,0 +1,11 @@
+## Important Notes
+
+Consider whether to add an 'important_notes' field to highlight:
+- Breaking changes
+- Security implications
+- Major deprecations
+- Migration guidance needed
+- Performance impacts
+- Database migration requirements
+
+Only include 'important_notes' if the change significantly impacts users or requires attention during upgrades.

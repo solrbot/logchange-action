@@ -23,6 +23,16 @@ inputs:
     required: false
     default: ''
 
+  skip-changelog-labels:
+    description: 'Comma-separated list of PR labels that skip changelog requirement (e.g., documentation,chore,skip-changelog)'
+    required: false
+    default: ''
+
+  dry-run:
+    description: 'If true, generate suggestions without posting comments or setting outputs (for testing configuration)'
+    required: false
+    default: 'false'
+
   claude-token:
     description: 'Claude API token for AI-powered changelog generation (required if on-missing-entry is "generate")'
     required: false

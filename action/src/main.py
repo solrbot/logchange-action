@@ -3,12 +3,11 @@
 Logchange GitHub Action - Ensure changelog entries in pull requests
 """
 
-import json
 import logging
 import os
 import re
 import sys
-from typing import Any, Dict, List
+from typing import List, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from changelog_generator import ChangelogGenerator
 from changelog_validator import ChangelogValidator
+from config import ActionConfig
+from exceptions import ConfigurationError, GenerationError
 from github_client import GitHubClient
 from legacy_changelog_handler import LegacyChangelogHandler
 from pr_metadata_extractor import PRMetadataExtractor
@@ -55,124 +56,100 @@ def generate_changelog_slug(pr_number: int, title: str = "") -> str:
 class LogchangeAction:
     """Main action class handling the workflow"""
 
-    @staticmethod
-    def _get_input(input_name: str, default: str = "") -> str:
-        """Get input value, trying both hyphenated and underscored versions.
-
-        GitHub Actions passes inputs with hyphens as-is in env vars (e.g., INPUT_ON-MISSING-ENTRY),
-        but also provides underscored versions (e.g., INPUT_ON_MISSING_ENTRY).
-        We try both for compatibility.
-        """
-        underscored = "INPUT_" + input_name.upper().replace("-", "_")
-        hyphenated = "INPUT_" + input_name.upper()
-
-        value = os.getenv(underscored) or os.getenv(hyphenated) or default
-        logger.debug(
-            f"_get_input({input_name}): underscore={underscored}={os.getenv(underscored)}, "
-            f"hyphen={hyphenated}={os.getenv(hyphenated)}, result={value}"
-        )
-        return value
-
     def __init__(self):
-        """Initialize the action with environment variables"""
-        # GitHub context
-        self.github_event = self._load_github_event()
-        self.github_token = os.getenv("GITHUB_TOKEN")
-        self.github_api_url = os.getenv("GITHUB_API_URL", "https://api.github.com")
+        """Initialize the action with configuration"""
+        try:
+            # Load configuration from environment
+            self.config = ActionConfig()
 
-        # Action inputs
-        self.changelog_path = self._get_input("changelog-path", "changelog/unreleased")
-        self.on_missing_entry = self._get_input("on-missing-entry", "fail").lower()
-        self.missing_entry_message = self._get_input(
-            "missing-entry-message",
-            "This pull request is missing a logchange entry in the changelog/unreleased directory",
-        )
-        self.skip_files_regex = self._get_input("skip-files-regex", "")
-        self.claude_token = self._get_input("claude-token", "")
-        logger.debug(
-            f"Claude token: {'***' if self.claude_token else '(not provided)'}"
-        )
-        self.claude_model = self._get_input("claude-model", "claude-opus-4-1-20250805")
-        self.claude_system_prompt = self._get_input("claude-system-prompt", "")
-        self.changelog_language = self._get_input("changelog-language", "English")
-        self.max_tokens_context = int(self._get_input("max-tokens-context", "5000"))
-        self.max_tokens_per_file = int(self._get_input("max-tokens-per-file", "1000"))
+            # Log configuration summary if debug mode
+            logger.debug(self.config.get_summary())
 
-        # Parse configuration
-        self.changelog_types = self._parse_list_input(
-            "changelog-types",
-            "added,changed,deprecated,removed,fixed,security,dependency_update,other",
-        )
-        self.mandatory_fields = self._parse_list_input("mandatory-fields", "title")
-        self.forbidden_fields = self._parse_list_input("forbidden-fields", "")
-        self.optional_fields = self._parse_list_input("optional-fields", "")
+            # Assign configuration attributes for backward compatibility
+            self.changelog_path = self.config.changelog_path
+            self.on_missing_entry = self.config.on_missing_entry
+            self.missing_entry_message = self.config.missing_entry_message
+            self.skip_files_regex = self.config.skip_files_regex
+            self.skip_changelog_labels = self.config.skip_changelog_labels
+            self.dry_run = self.config.dry_run
+            self.claude_token = self.config.claude_token
+            self.claude_model = self.config.claude_model
+            self.claude_system_prompt = self.config.claude_system_prompt
+            self.changelog_language = self.config.changelog_language
+            self.max_tokens_context = self.config.max_tokens_context
+            self.max_tokens_per_file = self.config.max_tokens_per_file
+            self.changelog_types = self.config.changelog_types
+            self.mandatory_fields = self.config.mandatory_fields
+            self.forbidden_fields = self.config.forbidden_fields
+            self.optional_fields = self.config.optional_fields
+            self.legacy_changelog_paths = self.config.legacy_changelog_paths
+            self.on_legacy_entry = self.config.on_legacy_entry
+            self.on_legacy_and_logchange = self.config.on_legacy_and_logchange
+            self.legacy_entry_message = self.config.legacy_entry_message
+            self.legacy_conflict_message = self.config.legacy_conflict_message
+            self.validation_fail_message = self.config.validation_fail_message
+            self.validation_fail_workflow = self.config.validation_fail_workflow
+            self.external_issue_regex = self.config.external_issue_regex
+            self.external_issue_url_template = self.config.external_issue_url_template
+            self.generate_important_notes = self.config.generate_important_notes
+            self.github_issue_detection = self.config.github_issue_detection
+            self.issue_tracker_url_detection = self.config.issue_tracker_url_detection
 
-        # Legacy changelog configuration (disabled by default)
-        self.legacy_changelog_paths = self._parse_list_input(
-            "legacy-changelog-paths", ""
-        )
-        self.on_legacy_entry = self._get_input("on-legacy-entry", "convert").lower()
-        self.on_legacy_and_logchange = self._get_input(
-            "on-legacy-and-logchange", "warn"
-        ).lower()
-        self.legacy_entry_message = self._get_input(
-            "legacy-entry-message",
-            "I detected a legacy changelog entry. Converting it to logchange format...",
-        )
-        self.legacy_conflict_message = self._get_input(
-            "legacy-conflict-message",
-            "This PR contains both legacy and logchange changelog entries. Please use only logchange format.",
-        )
+            # GitHub context
+            self.github_event = self.config.github_event
+            self.github_token = self.config.github_token
+            self.github_api_url = self.config.github_api_url
 
-        self.validation_fail_message = self._get_input(
-            "validation-fail-message",
-            "The changelog entry does not comply with the required format",
-        )
-        self.validation_fail_workflow = (
-            self._get_input("validation-fail-workflow", "true").lower() == "true"
-        )
+            # Initialize clients
+            self.github_client = GitHubClient(
+                self.github_token, self.github_api_url, self.github_event
+            )
+            self.validator = ChangelogValidator(
+                changelog_types=self.changelog_types,
+                mandatory_fields=self.mandatory_fields,
+                forbidden_fields=self.forbidden_fields,
+                optional_fields=self.optional_fields,
+            )
+            self.legacy_handler = LegacyChangelogHandler(self.legacy_changelog_paths)
+            self.metadata_extractor = PRMetadataExtractor(
+                external_issue_regex=(
+                    self.external_issue_regex if self.external_issue_regex else None
+                ),
+                external_issue_url_template=(
+                    self.external_issue_url_template
+                    if self.external_issue_url_template
+                    else None
+                ),
+                github_issue_detection=self.github_issue_detection,
+                issue_tracker_url_detection=self.issue_tracker_url_detection,
+            )
+            self.generator = self._initialize_generator()
 
-        # Metadata extraction configuration
-        self.external_issue_regex = self._get_input("external-issue-regex", "")
-        self.external_issue_url_template = self._get_input(
-            "external-issue-url-template", ""
-        )
-        self.generate_important_notes = (
-            self._get_input("generate-important-notes", "true").lower() == "true"
-        )
-        self.github_issue_detection = (
-            self._get_input("github-issue-detection", "true").lower() == "true"
-        )
-        self.issue_tracker_url_detection = (
-            self._get_input("issue-tracker-url-detection", "true").lower() == "true"
-        )
+        except ConfigurationError as e:
+            logger.error(f"Configuration error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to initialize action: {e}", exc_info=True)
+            raise
 
-        # Initialize clients
-        self.github_client = GitHubClient(
-            self.github_token, self.github_api_url, self.github_event
-        )
-        self.validator = ChangelogValidator(
-            changelog_types=self.changelog_types,
-            mandatory_fields=self.mandatory_fields,
-            forbidden_fields=self.forbidden_fields,
-            optional_fields=self.optional_fields,
-        )
-        self.legacy_handler = LegacyChangelogHandler(self.legacy_changelog_paths)
-        self.metadata_extractor = PRMetadataExtractor(
-            external_issue_regex=(
-                self.external_issue_regex if self.external_issue_regex else None
-            ),
-            external_issue_url_template=(
-                self.external_issue_url_template
-                if self.external_issue_url_template
-                else None
-            ),
-            github_issue_detection=self.github_issue_detection,
-            issue_tracker_url_detection=self.issue_tracker_url_detection,
-        )
-        self.generator = None
-        if self.on_missing_entry == "generate" and self.claude_token:
-            self.generator = ChangelogGenerator(
+    def _initialize_generator(self) -> ChangelogGenerator:
+        """Initialize Claude changelog generator with graceful degradation.
+
+        Returns:
+            ChangelogGenerator instance if generation is enabled, None otherwise
+        """
+        if self.on_missing_entry != "generate":
+            return None
+
+        if not self.claude_token:
+            logger.warning(
+                "on-missing-entry is 'generate' but claude-token not provided. "
+                "Will degrade to 'warn' mode."
+            )
+            return None
+
+        try:
+            return ChangelogGenerator(
                 api_key=self.claude_token,
                 model=self.claude_model,
                 system_prompt=self.claude_system_prompt,
@@ -192,35 +169,29 @@ class LogchangeAction:
                     else None
                 ),
             )
-
-    def _load_github_event(self) -> Dict[str, Any]:
-        """Load GitHub event from environment"""
-        event_path = os.getenv("GITHUB_EVENT_PATH")
-        if not event_path or not os.path.exists(event_path):
-            logger.warning("GITHUB_EVENT_PATH not found or not set")
-            return {}
-
-        try:
-            with open(event_path, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
-            logger.error(f"Failed to load GitHub event: {e}")
-            return {}
-
-    def _parse_list_input(self, input_name: str, default: str) -> List[str]:
-        """Parse comma-separated input into a list"""
-        value = self._get_input(input_name, default)
-        if not value:
-            return []
-        return [item.strip() for item in value.split(",") if item.strip()]
+        except Exception as e:
+            logger.error(f"Failed to initialize Claude generator: {e}", exc_info=True)
+            return None
 
     def set_output(self, name: str, value: str) -> None:
-        """Set GitHub Actions output"""
+        """Set GitHub Actions output (respects dry-run mode)"""
+        if self.dry_run:
+            logger.info(f"[DRY-RUN] Output: {name}={value}")
+            return
+
         output_file = os.getenv("GITHUB_OUTPUT")
         if output_file:
             with open(output_file, "a") as f:
                 f.write(f"{name}={value}\n")
         logger.info(f"Output: {name}={value}")
+
+    def _post_comment(self, message: str) -> None:
+        """Post a comment on the PR (respects dry-run mode)"""
+        if self.dry_run:
+            logger.info(f"[DRY-RUN] Would post comment:\n{message}")
+            return
+
+        self.github_client.comment_on_pr(message)
 
     def run(self) -> int:
         """Main action execution"""
@@ -294,7 +265,13 @@ class LogchangeAction:
         return self.github_client.has_existing_changelog_suggestion()
 
     def _should_skip_changelog(self, pr_files: List[str]) -> bool:
-        """Check if all files match skip pattern"""
+        """Check if changelog should be skipped based on files or labels"""
+        # Check label-based skipping
+        if self._should_skip_by_label():
+            logger.info("PR has label that skips changelog requirement")
+            return True
+
+        # Check file-based skipping
         if not self.skip_files_regex:
             return False
 
@@ -304,6 +281,26 @@ class LogchangeAction:
         except re.error as e:
             logger.warning(f"Invalid skip regex pattern: {e}")
             return False
+
+    def _should_skip_by_label(self) -> bool:
+        """Check if PR has any labels that skip changelog requirement"""
+        if not self.skip_changelog_labels:
+            return False
+
+        pr_info = self.github_event.get("pull_request", {})
+        pr_labels = [label.get("name", "") for label in pr_info.get("labels", [])]
+
+        if not pr_labels:
+            return False
+
+        for configured_label in self.skip_changelog_labels:
+            if configured_label in pr_labels:
+                logger.info(
+                    f"Found skip-changelog label: {configured_label} in PR labels"
+                )
+                return True
+
+        return False
 
     def _get_changelog_files(self, pr_files: List[str]) -> List[str]:
         """Get changelog files edited in PR"""
@@ -370,6 +367,89 @@ class LogchangeAction:
             f'**{level.capitalize() + ("s" if level == "warning" else "")}**:\n{errors_text}'
         )
 
+    def _generate_and_validate(
+        self,
+        input_text: str,
+        custom_prompt: Optional[str] = None,
+        context_name: str = "changelog entry",
+    ) -> Optional[str]:
+        """
+        Common workflow for generating and validating changelog entries.
+
+        Handles:
+        - Calling generate_with_validation
+        - Checking for generation failures
+        - Checking for validation failures
+        - Checking for duplicate suggestions
+        - Posting error comments
+        - Setting error outputs
+
+        Args:
+            input_text: The PR diff or entry text to generate from
+            custom_prompt: Optional custom prompt override
+            context_name: Name of what's being generated (for logging/messages)
+
+        Returns:
+            Generated entry string if successful, None if failed
+        """
+        if not self.generator:
+            logger.warning(f"Generator not available for {context_name}")
+            self.github_client.comment_on_pr(
+                f"⚠️ {context_name} generation requested but generator not available"
+            )
+            self.set_output("generation-error", "Generator not available")
+            return None
+
+        try:
+            logger.info(f"Generating {context_name}...")
+            pr_info = self.github_event.get("pull_request", {})
+
+            (
+                generated_entry,
+                is_valid,
+                validation_message,
+            ) = self.generator.generate_with_validation(
+                input_text,
+                pr_info,
+                self.validator,
+                custom_prompt=custom_prompt,
+            )
+
+            if not generated_entry:
+                logger.warning(
+                    f"{context_name} generation failed: {validation_message}"
+                )
+                self.github_client.comment_on_pr(
+                    f"⚠️ {context_name} generation failed\n\n"
+                    f"*(Reason: {validation_message})*"
+                )
+                self.set_output("generation-error", validation_message)
+                return None
+
+            if not is_valid:
+                logger.error(f"Generated {context_name} invalid: {validation_message}")
+                self.github_client.comment_on_pr(
+                    f"⚠️ Generated {context_name} failed validation"
+                )
+                self.set_output("generation-error", "Validation failed")
+                return None
+
+            # Check for duplicate suggestion
+            if self._has_existing_suggestion():
+                logger.info(f"{context_name} suggestion already exists, skipping")
+                return None
+
+            logger.info(f"{context_name} generated and validated successfully")
+            return generated_entry
+
+        except GenerationError as e:
+            logger.warning(f"{context_name} generation error: {e}")
+            self.github_client.comment_on_pr(
+                f"⚠️ {context_name} generation failed: {str(e)}"
+            )
+            self.set_output("generation-error", str(e))
+            return None
+
     def _handle_missing_changelog(self, pr_files: List[str]) -> int:
         """Handle case where changelog entry is missing"""
         logger.info(f"No changelog entry found, action: {self.on_missing_entry}")
@@ -387,59 +467,29 @@ class LogchangeAction:
             return 0
 
         elif self.on_missing_entry == "generate":
-            if not self.generator:
-                logger.error("Claude generation requested but no API token provided")
-                self.github_client.comment_on_pr(
-                    "❌ Changelog generation failed: No Claude API token provided"
-                )
-                self.set_output("generation-error", "No Claude API token provided")
-                return 1
+            # Get PR diff
+            pr_diff = self.github_client.get_pr_diff(pr_files)
+            logger.info(f"PR diff size: {len(pr_diff)} characters")
 
-            try:
-                # Get PR diff
-                pr_diff = self.github_client.get_pr_diff(pr_files)
-                logger.info(f"PR diff size: {len(pr_diff)} characters")
+            # Generate and validate using consolidated helper
+            generated_entry = self._generate_and_validate(
+                pr_diff, context_name="changelog entry"
+            )
 
-                # Generate changelog
-                logger.info("Generating changelog with Claude...")
-                generated_entry = self.generator.generate(
-                    pr_diff, self.github_event.get("pull_request", {})
-                )
-
-                if not generated_entry:
-                    logger.error("Failed to generate changelog")
-                    self.github_client.comment_on_pr(
-                        "❌ Changelog generation failed: Could not generate valid entry"
-                    )
-                    self.set_output(
-                        "generation-error", "Could not generate valid entry"
-                    )
-                    return 1
-
-                # Check if we've already posted a suggestion on this PR
-                if self._has_existing_suggestion():
-                    logger.info(
-                        "Changelog suggestion already exists on this PR, skipping"
-                    )
-                    self.set_output("changelog-found", "false")
-                    self.set_output("changelog-generated", "false")
-                    return 0
-
-                # Post as suggestion
+            if generated_entry:
+                # Post as suggestion (respect dry-run mode)
                 suggestion_comment = self._format_suggestion_comment(generated_entry)
-                self.github_client.comment_on_pr(suggestion_comment)
+                if not self.dry_run:
+                    self.github_client.comment_on_pr(suggestion_comment)
+                else:
+                    logger.info(
+                        f"[DRY-RUN] Would post suggestion:\n{suggestion_comment}"
+                    )
 
-                self.set_output("changelog-found", "false")
                 self.set_output("changelog-generated", "true")
-                logger.info("Changelog generated successfully")
-                return 0
 
-            except Exception as e:
-                logger.error(f"Generation failed: {e}", exc_info=True)
-                error_msg = f"Changelog generation failed: {str(e)}"
-                self.github_client.comment_on_pr(f"❌ {error_msg}")
-                self.set_output("generation-error", str(e))
-                return 1
+            self.set_output("changelog-found", "false")
+            return 0
 
         self.set_output("changelog-found", "false")
         return 0
@@ -576,26 +626,15 @@ Here's the suggested entry for `{file_path}`:
                 forbidden_fields=self.forbidden_fields,
             )
 
-            # Generate logchange entry from legacy entry
-            logger.info("Sending legacy entry to Claude for conversion...")
-            generated_entry = self.generator.generate(
-                entry_text, pr_info, custom_prompt=conversion_prompt
+            # Generate and validate using consolidated helper
+            generated_entry = self._generate_and_validate(
+                entry_text,
+                custom_prompt=conversion_prompt,
+                context_name="legacy changelog conversion",
             )
 
             if not generated_entry:
-                logger.error("Failed to convert legacy changelog entry")
-                self.github_client.comment_on_pr(
-                    "❌ Could not convert legacy changelog entry to logchange format"
-                )
-                self.set_output("generation-error", "Failed to convert legacy entry")
-                return 1
-
-            # Check if we've already posted a conversion suggestion on this PR
-            if self._has_existing_suggestion():
-                logger.info(
-                    "Changelog suggestion already exists on this PR, skipping legacy conversion"
-                )
-                self.set_output("legacy-converted", "false")
+                # Conversion failed - helper already posted error comment
                 return 0
 
             # Post review comments with suggested removal of legacy changelog lines

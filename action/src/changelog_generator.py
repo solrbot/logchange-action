@@ -1,6 +1,7 @@
 """Changelog generation using Claude AI"""
 
 import logging
+import os
 import re
 from typing import Any, Dict, Optional
 
@@ -10,10 +11,42 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
+def _load_template(template_name: str) -> str:
+    """Load a prompt template from file.
+
+    Args:
+        template_name: Name of template file (without .txt extension)
+
+    Returns:
+        Template contents as string
+    """
+    template_path = os.path.join(
+        os.path.dirname(__file__), "prompts", f"{template_name}.txt"
+    )
+
+    try:
+        with open(template_path, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        logger.warning(f"Template file not found: {template_path}")
+        return ""
+    except IOError as e:
+        logger.error(f"Failed to load template {template_name}: {e}")
+        return ""
+
+
 class ChangelogGenerator:
     """Generate changelog entries using Claude API"""
 
-    DEFAULT_SYSTEM_PROMPT = """You are an expert software engineer specializing in changelog management.
+    @staticmethod
+    def _get_default_system_prompt() -> str:
+        """Get default system prompt, loading from template if available."""
+        template = _load_template("default_system_prompt")
+        if template:
+            return template
+        # Fallback to inline version if template not found
+        logger.warning("Using fallback system prompt")
+        return """You are an expert software engineer specializing in changelog management.
 Your task is to generate a logchange-formatted YAML entry based on the provided pull request information.
 
 Create a changelog entry that:
@@ -30,8 +63,15 @@ CRITICAL: Only use valid logchange fields. Never hallucinate fields like 'refere
 Always output ONLY valid YAML that can be parsed directly, with no additional text or markdown formatting.
 The YAML should be a single object with the required fields."""
 
-    DEFAULT_IMPORTANT_NOTES_INSTRUCTION = """
-## Important Notes
+    @staticmethod
+    def _get_important_notes_instruction() -> str:
+        """Get important notes instruction, loading from template if available."""
+        template = _load_template("important_notes_instruction")
+        if template:
+            return template
+        # Fallback to inline version if template not found
+        logger.warning("Using fallback important notes instruction")
+        return """## Important Notes
 
 Consider whether to add an 'important_notes' field to highlight:
 - Breaking changes
@@ -182,7 +222,7 @@ Use the MOST SPECIFIC type from the allowed list above. Examples for common type
         if using_custom_prompt:
             prompt_parts.append(system_prompt)
         else:
-            prompt_parts.append(self.DEFAULT_SYSTEM_PROMPT)
+            prompt_parts.append(self._get_default_system_prompt())
 
         # Add configuration-based sections only if using default prompt
         # If user provides custom prompt, they need to handle these themselves
@@ -196,7 +236,7 @@ Use the MOST SPECIFIC type from the allowed list above. Examples for common type
 
             # Add important_notes instruction if enabled
             if self.generate_important_notes:
-                prompt_parts.append(self.DEFAULT_IMPORTANT_NOTES_INSTRUCTION)
+                prompt_parts.append(self._get_important_notes_instruction())
 
         # Always add language instruction (even with custom prompt)
         prompt_parts.append(lang_instruction)
@@ -301,6 +341,142 @@ Use the MOST SPECIFIC type from the allowed list above. Examples for common type
         except (KeyError, ValueError) as e:
             logger.error(f"Failed to parse Claude response: {e}")
             return None
+
+    def generate_with_validation(
+        self,
+        pr_diff: str,
+        pr_info: Dict[str, Any],
+        validator: Any,
+        custom_prompt: Optional[str] = None,
+    ) -> tuple[Optional[str], bool, str]:
+        """
+        Generate a changelog entry and validate it against configured rules.
+        Retries up to 2 times if validation fails.
+
+        Args:
+            pr_diff: The PR diff content
+            pr_info: PR information from GitHub event
+            validator: ChangelogValidator instance with configured rules
+            custom_prompt: Optional custom user prompt
+
+        Returns:
+            Tuple of (generated_entry, is_valid, message)
+            - generated_entry: The YAML string or None
+            - is_valid: Whether entry passed validation
+            - message: Human-readable message about the result or validation errors
+        """
+        max_retries = 2
+        attempt = 0
+        validation_errors = []
+
+        while attempt <= max_retries:
+            attempt += 1
+            logger.info(
+                f"Generating changelog entry (attempt {attempt}/{max_retries + 1})"
+            )
+
+            # Generate entry
+            if attempt == 1:
+                # First attempt: use provided prompt
+                generated_entry = self.generate(pr_diff, pr_info, custom_prompt)
+            else:
+                # Retry attempts: use enhanced prompt with validation context
+                retry_prompt = self._build_retry_prompt(
+                    custom_prompt, validation_errors, pr_diff, pr_info
+                )
+                generated_entry = self.generate(pr_diff, pr_info, retry_prompt)
+
+            if not generated_entry:
+                logger.error(f"Generation failed on attempt {attempt}")
+                if attempt <= max_retries:
+                    logger.info(f"Retrying... (attempt {attempt + 1})")
+                    continue
+                else:
+                    return None, False, "Failed to generate valid YAML after retries"
+
+            # Validate the generated entry
+            is_valid, validation_errors = validator.validate(generated_entry)
+
+            if is_valid:
+                logger.info(f"Entry passed validation on attempt {attempt}")
+                return (
+                    generated_entry,
+                    True,
+                    "Entry generated and validated successfully",
+                )
+
+            # Entry invalid - log errors and retry if attempts remain
+            error_message = "; ".join(validation_errors)
+            logger.warning(f"Validation failed on attempt {attempt}: {error_message}")
+
+            if attempt <= max_retries:
+                logger.info(
+                    f"Retrying with validation feedback... (attempt {attempt + 1})"
+                )
+                continue
+            else:
+                # All retries exhausted
+                logger.error(
+                    f"Entry failed validation after {max_retries + 1} attempts"
+                )
+                return None, False, f"Entry failed validation: {error_message}"
+
+        # Should not reach here, but just in case
+        return None, False, "Unexpected error in generate_with_validation"
+
+    def _build_retry_prompt(
+        self,
+        original_prompt: Optional[str],
+        validation_errors: list,
+        pr_diff: str,
+        pr_info: Dict[str, Any],
+    ) -> str:
+        """
+        Build a retry prompt that includes validation feedback.
+
+        Args:
+            original_prompt: The original custom prompt if provided
+            validation_errors: List of validation error messages
+            pr_diff: The PR diff
+            pr_info: PR information
+
+        Returns:
+            Enhanced prompt with validation context
+        """
+        errors_text = "\n".join(f"  - {error}" for error in validation_errors)
+
+        retry_context = f"""Your previous generated changelog entry had validation errors. Please fix these issues:
+
+{errors_text}
+
+Try again, ensuring your output addresses each validation error above."""
+
+        if original_prompt:
+            # If there was a custom prompt, append retry context to it
+            return f"{original_prompt}\n\n{retry_context}"
+        else:
+            # Otherwise, build a complete prompt with the diff and retry context
+            pr_title = pr_info.get("title", "")
+            pr_body = pr_info.get("body", "")
+            pr_author = pr_info.get("user", {}).get("login", "unknown")
+
+            return f"""Generate a logchange-formatted YAML changelog entry for this PR.
+
+PR Title: {pr_title}
+
+PR Description:
+{pr_body}
+
+Author: {pr_author}
+
+Changes:
+```diff
+{pr_diff}
+```
+
+{retry_context}
+
+Output ONLY the corrected YAML with no additional text."""
 
     def _extract_yaml(self, text: str) -> str:
         """Extract YAML from markdown code blocks if present"""
