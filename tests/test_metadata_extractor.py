@@ -1,14 +1,13 @@
 """Tests for PR metadata extractor"""
 
-import sys
 import os
+import sys
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
-from pr_metadata_extractor import PRMetadataExtractor
-
 import pytest
+from pr_metadata_extractor import PRMetadataExtractor
 
 
 class TestPRMetadataExtractor:

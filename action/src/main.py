@@ -3,12 +3,12 @@
 Logchange GitHub Action - Ensure changelog entries in pull requests
 """
 
-import os
-import sys
 import json
-import re
-from typing import List, Dict, Any
 import logging
+import os
+import re
+import sys
+from typing import Any, Dict, List
 
 # Configure logging
 logging.basicConfig(
@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 # Add src directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from github_client import GitHubClient
-from changelog_validator import ChangelogValidator
 from changelog_generator import ChangelogGenerator
+from changelog_validator import ChangelogValidator
+from github_client import GitHubClient
 from legacy_changelog_handler import LegacyChangelogHandler
 from pr_metadata_extractor import PRMetadataExtractor
 

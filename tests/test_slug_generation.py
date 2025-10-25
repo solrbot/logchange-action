@@ -1,14 +1,13 @@
 """Tests for changelog filename slug generation"""
 
-import sys
 import os
+import sys
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
-from main import generate_changelog_slug
-
 import pytest
+from main import generate_changelog_slug
 
 
 class TestSlugGeneration:

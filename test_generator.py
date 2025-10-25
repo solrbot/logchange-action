@@ -36,11 +36,11 @@ Examples:
         --github-issue-detection false
 """
 
-import sys
-import os
 import argparse
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 
 sys.path.insert(0, "action/src")

@@ -1,8 +1,9 @@
 """Changelog validation module"""
 
-import yaml
 import logging
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
+
+import yaml
 
 logger = logging.getLogger(__name__)
 

@@ -1,10 +1,11 @@
 """GitHub API client for PR operations"""
 
-import os
 import json
-import requests
 import logging
-from typing import List, Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
+import requests
 
 logger = logging.getLogger(__name__)
 

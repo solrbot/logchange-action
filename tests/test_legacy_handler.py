@@ -1,15 +1,14 @@
 """Tests for legacy changelog handler"""
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add src directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "action", "src"))
 
-from legacy_changelog_handler import LegacyChangelogHandler
-
 import pytest
+from legacy_changelog_handler import LegacyChangelogHandler
 
 
 class TestLegacyChangelogHandler:

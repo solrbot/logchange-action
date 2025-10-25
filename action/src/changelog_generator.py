@@ -2,9 +2,10 @@
 
 import logging
 import re
+from typing import Any, Dict, Optional
+
 import requests
 import yaml
-from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
