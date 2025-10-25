@@ -657,19 +657,34 @@ Here's the suggested entry for `{file_path}`:
                 )
 
                 for start_line, end_line, group_content in line_groups:
-                    # Format the suggestion with markdown syntax for removal
-                    suggestion_body = (
-                        "This was converted to logchange format. Let's remove it.\n\n"
-                        "```suggestion\n"
-                        "```"
-                    )
+                    is_single_line = start_line == end_line
 
-                    self.github_client.create_review_comment_with_suggestion(
-                        commit_sha=commit_sha,
-                        file_path=legacy_file,
-                        line=end_line,  # Post on the last line of the group
-                        body=suggestion_body,
-                    )
+                    if is_single_line:
+                        # For single-line removals, use GitHub's suggestion syntax
+                        suggestion_body = (
+                            "This was converted to logchange format. Let's remove it.\n\n"
+                            "```suggestion\n"
+                            "```"
+                        )
+                        self.github_client.create_review_comment_with_suggestion(
+                            commit_sha=commit_sha,
+                            file_path=legacy_file,
+                            line=end_line,
+                            body=suggestion_body,
+                        )
+                    else:
+                        # For multi-line removals, post a regular comment on the last line
+                        # (GitHub's multi-line suggestion API has limitations)
+                        suggestion_body = (
+                            f"Lines {start_line}-{end_line}: This was converted to logchange format. "
+                            "Please remove these lines."
+                        )
+                        self.github_client.create_review_comment_with_suggestion(
+                            commit_sha=commit_sha,
+                            file_path=legacy_file,
+                            line=end_line,
+                            body=suggestion_body,
+                        )
 
             # Post the converted entry as a regular comment
             suggestion_comment = self._format_legacy_conversion_comment(
@@ -701,9 +716,9 @@ Here's the suggested entry for `{file_path}`:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""🔄 **I've converted the legacy changelog entry to logchange format!**
+        return f"""🔄 **I've converted the changelog entry to logchange format!**
 
-I detected a change to `{legacy_file}` and converted it to the logchange format below.
+I detected changes to `{legacy_file}` and converted them to the logchange format below.
 
 **Suggested Logchange Entry** for `{file_path}`:
 
@@ -717,7 +732,7 @@ I detected a change to `{legacy_file}` and converted it to the logchange format 
    - Create a new file at `{file_path}`
    - Copy the YAML above into it
 
-2. ⚠️ **Remove** the legacy changes:
+2. ⚠️ **Remove** the original entry:
    - I've added suggested edits to remove the lines you added to `{legacy_file}`
    - Review the suggestions in the PR review and accept them
 
@@ -727,7 +742,7 @@ I detected a change to `{legacy_file}` and converted it to the logchange format 
    - Feel free to edit the logchange YAML
 
 **Why?**
-This project uses logchange format for changelog entries, not the traditional {legacy_file} format. Using logchange ensures consistency and better tooling support.
+This project uses logchange format for changelog entries. Using logchange ensures consistency and better tooling support across all changelog entries.
 """
 
 

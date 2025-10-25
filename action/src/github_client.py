@@ -264,17 +264,20 @@ class GitHubClient:
         line: int,
         body: str,
         suggestion: str = "",
+        start_line: int = None,
     ) -> bool:
         """
         Create a review comment on a specific line with optional suggested changes.
+        Supports multi-line suggestions.
 
         Args:
             commit_sha: The commit SHA where the comment should be posted
             file_path: Path to the file in the PR
-            line: Line number (in the new version of the file)
+            line: Line number (in the new version of the file, or end line for multi-line)
             body: The comment text (markdown format with suggestion syntax if applicable)
             suggestion: Optional suggested replacement text (for "suggest edits" feature).
                        Use "```suggestion\n<content>\n```" format in body instead.
+            start_line: Optional start line for multi-line comments (if None, single line comment)
 
         Returns:
             True if successful, False otherwise
@@ -292,6 +295,10 @@ class GitHubClient:
             "body": body,
         }
 
+        # Add start_line for multi-line comments
+        if start_line is not None:
+            comment_data["start_line"] = start_line
+
         payload = {
             "body": "Review with suggested changes",
             "event": "COMMENT",
@@ -308,4 +315,7 @@ class GitHubClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to create review comment: {e}")
+            # Log response content for debugging 422 errors
+            if hasattr(e.response, 'text'):
+                logger.debug(f"GitHub API response: {e.response.text}")
             return False
