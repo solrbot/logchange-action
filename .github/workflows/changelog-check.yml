@@ -10,21 +10,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check Changelog
         uses: solrbot/logchange-action@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # Optional: configure the changelog path (default: changelog/unreleased)
           changelog-path: changelog/unreleased
-
-          # Optional: what to do when entry is missing (default: fail)
-          # Options: fail, warn, generate
           on-missing-entry: warn
-
-          # Optional: skip changelog for docs-only changes
           # skip-files-regex: '^(README\.md|docs/|\.github/)'
-
-          # Optional: for AI generation, provide Claude token
+          # For AI generation:
           # on-missing-entry: generate
           # claude-token: ${{ secrets.CLAUDE_API_KEY }}
-          # claude-language: English
