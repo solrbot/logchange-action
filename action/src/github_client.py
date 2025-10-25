@@ -272,8 +272,9 @@ class GitHubClient:
             commit_sha: The commit SHA where the comment should be posted
             file_path: Path to the file in the PR
             line: Line number (in the new version of the file)
-            body: The comment text
-            suggestion: Optional suggested replacement text (for "suggest edits" feature)
+            body: The comment text (markdown format with suggestion syntax if applicable)
+            suggestion: Optional suggested replacement text (for "suggest edits" feature).
+                       Use "```suggestion\n<content>\n```" format in body instead.
 
         Returns:
             True if successful, False otherwise
@@ -290,10 +291,6 @@ class GitHubClient:
             "line": line,
             "body": body,
         }
-
-        # If suggestion provided, add it in the format for suggested changes
-        if suggestion:
-            comment_data["suggestion"] = suggestion
 
         payload = {
             "body": "Review with suggested changes",

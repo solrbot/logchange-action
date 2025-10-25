@@ -143,6 +143,46 @@ class LegacyChangelogHandler:
 
         return added_lines_with_pos
 
+    def group_consecutive_lines(
+        self, added_lines: List[Tuple[int, str]]
+    ) -> List[Tuple[int, int, List[str]]]:
+        """
+        Group consecutive added lines together for multi-line suggestions.
+
+        Args:
+            added_lines: List of tuples (line_number, line_content)
+
+        Returns:
+            List of tuples (start_line, end_line, [line_contents]) for each group
+        """
+        if not added_lines:
+            return []
+
+        groups = []
+        start_line = added_lines[0][0]
+        end_line = added_lines[0][0]
+        group_content = [added_lines[0][1]]
+
+        for i in range(1, len(added_lines)):
+            current_line, current_content = added_lines[i]
+            prev_line = added_lines[i - 1][0]
+
+            # If consecutive, add to group
+            if current_line == prev_line + 1:
+                end_line = current_line
+                group_content.append(current_content)
+            else:
+                # Gap found, save current group and start new one
+                groups.append((start_line, end_line, group_content))
+                start_line = current_line
+                end_line = current_line
+                group_content = [current_content]
+
+        # Add the last group
+        groups.append((start_line, end_line, group_content))
+
+        return groups
+
     def detect_entry_type(self, entry_text: str) -> str:
         """
         Detect what type of changelog entry this is
