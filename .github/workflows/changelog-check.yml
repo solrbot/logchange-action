@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check Changelog
-        uses: solrbot/logchange-action@v1
+        uses: solrbot/logchange-action@main
         with:
           # Optional: configure the changelog path (default: changelog/unreleased)
           changelog-path: changelog/unreleased
