@@ -11,54 +11,14 @@ pip install black isort flake8 pytest pytest-cov
 
 ## Code Style and Formatting
 
-This project uses automated code formatting tools to ensure consistent code style:
-
-### Black (Code Formatting)
-
-[Black](https://github.com/psf/black) is used for automatic code formatting following PEP 8 conventions.
+Uses [Black](https://github.com/psf/black), [isort](https://pycqa.github.io/isort/), and [Flake8](https://flake8.pycqa.org/):
 
 ```bash
-# Check formatting without making changes
-black --check action/src/ tests/ test_generator.py
-
-# Auto-format all Python files
+# Format code
 black action/src/ tests/ test_generator.py
-```
-
-### isort (Import Sorting)
-
-[isort](https://pycqa.github.io/isort/) organizes and sorts imports according to PEP 8.
-
-```bash
-# Check import sorting without making changes
-isort --check-only action/src/ tests/ test_generator.py
-
-# Auto-sort imports in all Python files
 isort action/src/ tests/ test_generator.py
-```
 
-### Flake8 (Linting)
-
-[Flake8](https://flake8.pycqa.org/) checks for code style and logical errors.
-
-```bash
-# Run flake8 linting
-flake8 action/src/ tests/ test_generator.py \
-  --max-complexity=10 --max-line-length=127
-```
-
-### Format Everything at Once
-
-```bash
-# Auto-format and sort in one command
-black action/src/ tests/ test_generator.py && isort action/src/ tests/ test_generator.py
-```
-
-### Pre-commit Check
-
-Before committing, verify all formatting and linting checks pass:
-
-```bash
+# Verify before committing
 black --check action/src/ tests/ test_generator.py && \
 isort --check-only action/src/ tests/ test_generator.py && \
 flake8 action/src/ tests/ test_generator.py

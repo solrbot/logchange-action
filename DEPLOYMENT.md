@@ -4,46 +4,21 @@ This guide explains how to deploy the Logchange Action to GitHub.
 
 ## Prerequisites
 
-1. GitHub account with owner permissions for the organization/user (we use `solrbot` as example)
-2. Docker installed locally (for building and pushing Docker images)
-3. GitHub Personal Access Token with `write:packages` scope (for GHCR authentication)
-4. Git installed locally
+- GitHub account with owner permissions
+- Docker installed
+- GitHub Personal Access Token with `write:packages` scope
+- Git installed
 
-## Step 1: Publish to GitHub
+## Step 1: Release on GitHub
 
-### Initial Setup
-
-1. **Ensure you're on the main branch**:
+1. Switch to main and create a tag:
    ```bash
-   git checkout main
-   git pull origin main
-   ```
-
-2. **Create a release tag**:
-   ```bash
+   git checkout main && git pull origin main
    git tag -a v1.0.0 -m "Initial release: Logchange GitHub Action"
    git push origin v1.0.0
    ```
 
-3. **Create a GitHub Release**:
-   - Go to https://github.com/solrbot/logchange-action/releases
-   - Click "Create a new release"
-   - Tag: `v1.0.0`
-   - Title: "Logchange Action v1.0.0"
-   - Description:
-     ```
-     Initial release of the Logchange GitHub Action
-
-     Features:
-     - Enforce changelog entries in PRs
-     - Validate against logchange specification
-     - AI-powered changelog generation with Claude
-     - Flexible configuration options
-     - PR commenting and suggestions
-
-     See README.md for usage instructions.
-     ```
-   - Publish release
+2. Create GitHub Release at https://github.com/solrbot/logchange-action/releases with tag `v1.0.0` and release notes describing features
 
 ## Step 2: Build and Push Docker Image to GHCR
 
