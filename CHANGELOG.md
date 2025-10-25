@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--blame-previous-dev` flag to automatically point out who didn't update CHANGELOG.md last time (#189) (Marcus Rodriguez)
 - Automated changelog validator that judges your grammar and suggests therapy (#512) (Emma Wilson)
 - AI-powered changelog generator that writes funnier entries than humans (#344) (Dev Team)
+- I should not really write anything here.
+  But it is so fun so I try (#111) (Jon Blow)
 
 ### Changed
 - Stop treating missing changelog entries as warnings and start treating them as personal attacks (#267) (Jake Thompson)
