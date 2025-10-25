@@ -597,16 +597,25 @@ Here's the suggested entry for `{file_path}`:
             # Post review comments with suggested removal of legacy changelog lines
             commit_sha = pr_info.get("head", {}).get("sha", "")
             if added_lines and commit_sha:
+                # Group consecutive lines for multi-line suggestions
+                line_groups = self.legacy_handler.group_consecutive_lines(added_lines)
                 logger.info(
-                    f"Creating review with suggested removal for {len(added_lines)} lines"
+                    f"Creating {len(line_groups)} review comment(s) for removal suggestions"
                 )
-                for line_num, line_content in added_lines:
+
+                for start_line, end_line, group_content in line_groups:
+                    # Format the suggestion with markdown syntax for removal
+                    suggestion_body = (
+                        "This was converted to logchange format. Let's remove it.\n\n"
+                        "```suggestion\n"
+                        "```"
+                    )
+
                     self.github_client.create_review_comment_with_suggestion(
                         commit_sha=commit_sha,
                         file_path=legacy_file,
-                        line=line_num,
-                        body="This line was converted to logchange format. You can remove it.",
-                        suggestion="",  # Empty suggestion means remove the line
+                        line=end_line,  # Post on the last line of the group
+                        body=suggestion_body,
                     )
 
             # Post the converted entry as a regular comment
