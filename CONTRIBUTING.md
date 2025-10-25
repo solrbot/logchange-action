@@ -108,13 +108,26 @@ When making changes to the codebase:
 
 2. **Make your changes** and add tests if necessary
 
-3. **Format your code**:
+3. **Add a changelog entry**:
+   ```bash
+   # Create a new entry in the changelog directory
+   cat > changelog/unreleased/your-feature.yml << 'EOF'
+   title: Brief description of your changes
+   type: added
+   authors:
+     - name: Your Name
+       nick: your-github-username
+       url: https://github.com/your-github-username
+   EOF
+   ```
+
+4. **Format your code**:
    ```bash
    black action/src/ tests/ test_generator.py
    isort action/src/ tests/ test_generator.py
    ```
 
-4. **Run all checks**:
+5. **Run all checks**:
    ```bash
    # Run formatting checks
    black --check action/src/ tests/ test_generator.py
@@ -125,13 +138,13 @@ When making changes to the codebase:
    python3 -m pytest tests/ -v
    ```
 
-5. **Commit with a clear message**:
+6. **Commit with a clear message**:
    ```bash
    git add .
    git commit -m "Description of your changes"
    ```
 
-6. **Push and create a pull request**:
+7. **Push and create a pull request**:
    ```bash
    git push origin feature/your-feature-name
    ```
