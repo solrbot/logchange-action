@@ -375,7 +375,7 @@ Examples:
     gen_parser.add_argument("--pr-title", default="Test PR", help="PR title")
     gen_parser.add_argument("--language", default="English", help="Output language")
     gen_parser.add_argument(
-        "--model", default="claude-3-5-sonnet-20241022", help="Claude model"
+        "--model", default="claude-opus-4-1-20250805", help="Claude model"
     )
     gen_parser.add_argument("--types", help="Allowed types (comma-separated)")
     gen_parser.add_argument("--mandatory", help="Mandatory fields (comma-separated)")

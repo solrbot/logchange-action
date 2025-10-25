@@ -1,6 +1,6 @@
 name: 'Logchange Action'
-description: 'Ensure your pull requests include logchange changelog entries, with AI-powered generation support'
-author: 'solrbot'
+description: 'Enforce logchange changelog entries in PRs with optional AI generation via Claude'
+author: 'Jan Høydahl (with Claude Code)'
 
 inputs:
   changelog-path:
@@ -130,6 +130,11 @@ inputs:
     description: 'Whether to fail the workflow on validation errors or just comment'
     required: false
     default: 'true'
+
+  comment-mode:
+    description: 'How to comment on PRs: "review-comment" (default, as suggested changes), "pr-comment" (regular PR comment)'
+    required: false
+    default: 'review-comment'
 
 outputs:
   changelog-found:

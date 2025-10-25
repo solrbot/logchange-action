@@ -10,4 +10,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: solrbot/logchange-action@v1
+      - uses: YOUR-USERNAME/logchange-action@v1
+        # Replace YOUR-USERNAME with the GitHub user where you published this action

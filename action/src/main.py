@@ -92,9 +92,7 @@ class LogchangeAction:
         logger.debug(
             f"Claude token: {'***' if self.claude_token else '(not provided)'}"
         )
-        self.claude_model = self._get_input(
-            "claude-model", "claude-3-5-sonnet-20241022"
-        )
+        self.claude_model = self._get_input("claude-model", "claude-opus-4-1-20250805")
         self.claude_system_prompt = self._get_input("claude-system-prompt", "")
         self.changelog_language = self._get_input("changelog-language", "English")
         self.max_tokens_context = int(self._get_input("max-tokens-context", "5000"))
@@ -133,6 +131,10 @@ class LogchangeAction:
         self.validation_fail_workflow = (
             self._get_input("validation-fail-workflow", "true").lower() == "true"
         )
+
+        # Comment mode configuration
+        self.comment_mode = self._get_input("comment-mode", "review-comment").lower()
+        logger.info(f"Comment mode: {self.comment_mode}")
 
         # Metadata extraction configuration
         self.external_issue_regex = self._get_input("external-issue-regex", "")
@@ -285,6 +287,19 @@ class LogchangeAction:
 
         return is_pr_event
 
+    def _has_existing_suggestion(self) -> bool:
+        """
+        Check if the action has already posted a changelog suggestion on this PR.
+        This prevents duplicate suggestions when the PR is updated with new commits.
+
+        Returns:
+            True if a suggestion already exists, False otherwise
+        """
+        if self.comment_mode == "review-comment":
+            return self.github_client.has_existing_review_suggestion()
+        else:
+            return self.github_client.has_existing_changelog_suggestion()
+
     def _should_skip_changelog(self, pr_files: List[str]) -> bool:
         """Check if all files match skip pattern"""
         if not self.skip_files_regex:
@@ -332,8 +347,9 @@ class LogchangeAction:
 
                 emoji = "❌" if self.validation_fail_workflow else "⚠️"
                 level = "failed" if self.validation_fail_workflow else "warning"
-                self.github_client.comment_on_pr(
-                    f"{emoji} **Changelog {level}**: {file_path}\n\n{str(e)}"
+                self.github_client.comment_or_review(
+                    f"{emoji} **Changelog {level}**: {file_path}\n\n{str(e)}",
+                    mode=self.comment_mode,
                 )
 
                 if self.validation_fail_workflow:
@@ -356,10 +372,11 @@ class LogchangeAction:
         level = "failed" if self.validation_fail_workflow else "warning"
         errors_text = "\n".join(f"- {e}" for e in errors)
 
-        self.github_client.comment_on_pr(
+        self.github_client.comment_or_review(
             f"{emoji} **{title}**: {self.validation_fail_message}\n\n"
             f"**File**: {file_path}\n"
-            f'**{level.capitalize() + ("s" if level == "warning" else "")}**:\n{errors_text}'
+            f'**{level.capitalize() + ("s" if level == "warning" else "")}**:\n{errors_text}',
+            mode=self.comment_mode,
         )
 
     def _handle_missing_changelog(self, pr_files: List[str]) -> int:
@@ -368,21 +385,26 @@ class LogchangeAction:
 
         if self.on_missing_entry == "fail":
             logger.error(self.missing_entry_message)
-            self.github_client.comment_on_pr(f"❌ {self.missing_entry_message}")
+            self.github_client.comment_or_review(
+                f"❌ {self.missing_entry_message}", mode=self.comment_mode
+            )
             self.set_output("changelog-found", "false")
             return 1
 
         elif self.on_missing_entry == "warn":
             logger.warning(self.missing_entry_message)
-            self.github_client.comment_on_pr(f"⚠️ {self.missing_entry_message}")
+            self.github_client.comment_or_review(
+                f"⚠️ {self.missing_entry_message}", mode=self.comment_mode
+            )
             self.set_output("changelog-found", "false")
             return 0
 
         elif self.on_missing_entry == "generate":
             if not self.generator:
                 logger.error("Claude generation requested but no API token provided")
-                self.github_client.comment_on_pr(
-                    "❌ Changelog generation failed: No Claude API token provided"
+                self.github_client.comment_or_review(
+                    "❌ Changelog generation failed: No Claude API token provided",
+                    mode=self.comment_mode,
                 )
                 self.set_output("generation-error", "No Claude API token provided")
                 return 1
@@ -400,17 +422,29 @@ class LogchangeAction:
 
                 if not generated_entry:
                     logger.error("Failed to generate changelog")
-                    self.github_client.comment_on_pr(
-                        "❌ Changelog generation failed: Could not generate valid entry"
+                    self.github_client.comment_or_review(
+                        "❌ Changelog generation failed: Could not generate valid entry",
+                        mode=self.comment_mode,
                     )
                     self.set_output(
                         "generation-error", "Could not generate valid entry"
                     )
                     return 1
 
+                # Check if we've already posted a suggestion on this PR
+                if self._has_existing_suggestion():
+                    logger.info(
+                        "Changelog suggestion already exists on this PR, skipping"
+                    )
+                    self.set_output("changelog-found", "false")
+                    self.set_output("changelog-generated", "false")
+                    return 0
+
                 # Post as suggestion
                 suggestion_comment = self._format_suggestion_comment(generated_entry)
-                self.github_client.comment_on_pr(suggestion_comment)
+                self.github_client.comment_or_review(
+                    suggestion_comment, mode=self.comment_mode
+                )
 
                 self.set_output("changelog-found", "false")
                 self.set_output("changelog-generated", "true")
@@ -420,7 +454,9 @@ class LogchangeAction:
             except Exception as e:
                 logger.error(f"Generation failed: {e}", exc_info=True)
                 error_msg = f"Changelog generation failed: {str(e)}"
-                self.github_client.comment_on_pr(f"❌ {error_msg}")
+                self.github_client.comment_or_review(
+                    f"❌ {error_msg}", mode=self.comment_mode
+                )
                 self.set_output("generation-error", str(e))
                 return 1
 
@@ -463,11 +499,15 @@ Or let me know if you'd like me to adjust anything!
         )
 
         if self.on_legacy_and_logchange == "fail":
-            self.github_client.comment_on_pr(f"❌ {self.legacy_conflict_message}")
+            self.github_client.comment_or_review(
+                f"❌ {self.legacy_conflict_message}", mode=self.comment_mode
+            )
             self.set_output("legacy-conflict", "true")
             return 1
         elif self.on_legacy_and_logchange == "warn":
-            self.github_client.comment_on_pr(f"⚠️ {self.legacy_conflict_message}")
+            self.github_client.comment_or_review(
+                f"⚠️ {self.legacy_conflict_message}", mode=self.comment_mode
+            )
             self.set_output("legacy-conflict", "true")
             # Continue to validate the logchange entries
             return self._handle_existing_changelog(changelog_files)
@@ -485,12 +525,16 @@ Or let me know if you'd like me to adjust anything!
 
         if self.on_legacy_entry == "warn":
             logger.warning("Legacy changelog entry found, warning as configured")
-            self.github_client.comment_on_pr(f"⚠️ {self.legacy_entry_message}")
+            self.github_client.comment_or_review(
+                f"⚠️ {self.legacy_entry_message}", mode=self.comment_mode
+            )
             return 0
 
         elif self.on_legacy_entry == "fail":
             logger.error("Legacy changelog entry found, failing as configured")
-            self.github_client.comment_on_pr(f"❌ {self.legacy_entry_message}")
+            self.github_client.comment_or_review(
+                f"❌ {self.legacy_entry_message}", mode=self.comment_mode
+            )
             return 1
 
         elif self.on_legacy_entry == "convert":
@@ -499,8 +543,9 @@ Or let me know if you'd like me to adjust anything!
                 logger.error(
                     "Legacy conversion requested but no Claude API token provided"
                 )
-                self.github_client.comment_on_pr(
-                    "❌ Legacy changelog conversion failed: No Claude API token provided"
+                self.github_client.comment_or_review(
+                    "❌ Legacy changelog conversion failed: No Claude API token provided",
+                    mode=self.comment_mode,
                 )
                 self.set_output("generation-error", "No Claude API token provided")
                 return 1
@@ -521,8 +566,9 @@ Or let me know if you'd like me to adjust anything!
             pr_diff = self.github_client.get_pr_diff([legacy_file])
             if not pr_diff:
                 logger.error(f"Could not get diff for legacy file: {legacy_file}")
-                self.github_client.comment_on_pr(
-                    f"❌ Could not extract changelog entry from {legacy_file}"
+                self.github_client.comment_or_review(
+                    f"❌ Could not extract changelog entry from {legacy_file}",
+                    mode=self.comment_mode,
                 )
                 return 1
 
@@ -532,8 +578,9 @@ Or let me know if you'd like me to adjust anything!
                 logger.error(
                     f"Could not extract changelog entry from diff of {legacy_file}"
                 )
-                self.github_client.comment_on_pr(
-                    f"⚠️ Found changes to {legacy_file} but could not extract changelog entry"
+                self.github_client.comment_or_review(
+                    f"⚠️ Found changes to {legacy_file} but could not extract changelog entry",
+                    mode=self.comment_mode,
                 )
                 return 0  # Don't fail, just warn
 
@@ -557,17 +604,28 @@ Or let me know if you'd like me to adjust anything!
 
             if not generated_entry:
                 logger.error("Failed to convert legacy changelog entry")
-                self.github_client.comment_on_pr(
-                    "❌ Could not convert legacy changelog entry to logchange format"
+                self.github_client.comment_or_review(
+                    "❌ Could not convert legacy changelog entry to logchange format",
+                    mode=self.comment_mode,
                 )
                 self.set_output("generation-error", "Failed to convert legacy entry")
                 return 1
+
+            # Check if we've already posted a conversion suggestion on this PR
+            if self._has_existing_suggestion():
+                logger.info(
+                    "Changelog suggestion already exists on this PR, skipping legacy conversion"
+                )
+                self.set_output("legacy-converted", "false")
+                return 0
 
             # Post the converted entry as a suggestion
             suggestion_comment = self._format_legacy_conversion_comment(
                 generated_entry, legacy_file
             )
-            self.github_client.comment_on_pr(suggestion_comment)
+            self.github_client.comment_or_review(
+                suggestion_comment, mode=self.comment_mode
+            )
 
             self.set_output("legacy-converted", "true")
             logger.info("Legacy changelog successfully converted to logchange format")
@@ -576,7 +634,9 @@ Or let me know if you'd like me to adjust anything!
         except Exception as e:
             logger.error(f"Legacy conversion failed: {e}", exc_info=True)
             error_msg = f"Legacy changelog conversion failed: {str(e)}"
-            self.github_client.comment_on_pr(f"❌ {error_msg}")
+            self.github_client.comment_or_review(
+                f"❌ {error_msg}", mode=self.comment_mode
+            )
             self.set_output("generation-error", str(e))
             return 1
 

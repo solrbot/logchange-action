@@ -16,13 +16,15 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 
 ## Quick Start
 
+Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
+
 **Basic (fail on missing entry):**
 ```yaml
 - uses: actions/checkout@v4
 - uses: solrbot/logchange-action@v1
 ```
 
-**With AI generation:**
+**With AI generation (requires Claude API key):**
 ```yaml
 - uses: solrbot/logchange-action@v1
   with:
@@ -68,6 +70,12 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
 | `generate-important-notes` | `true` | Instruct AI to generate important_notes field |
 | `github-issue-detection` | `true` | Detect GitHub issue references (#123) in PR description |
 | `issue-tracker-url-detection` | `true` | Detect issue tracker URLs via LLM filtering (only configured trackers added as links) |
+
+### Feedback & Comments
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `comment-mode` | `review-comment` | How to post comments: `review-comment` (PR review with 1-click approval) or `pr-comment` (regular PR comment) |
 
 ### Advanced
 
@@ -144,6 +152,43 @@ GitHub Action to enforce [logchange](https://logchange.dev/) changelog entries i
     github-issue-detection: false
 ```
 
+**Use regular PR comments instead of review comments:**
+```yaml
+- uses: solrbot/logchange-action@v1
+  with:
+    on-missing-entry: generate
+    claude-token: ${{ secrets.CLAUDE_API_KEY }}
+    comment-mode: pr-comment
+```
+
+## Comment Modes
+
+The action can provide feedback to PRs in two ways.
+
+### Review Comments (Default: `review-comment`)
+
+When `comment-mode: review-comment` (default), the action creates a **GitHub PR review** with its suggestions. This mode:
+- ✅ Allows reviewers to **approve** the suggestion with one click
+- ✅ Groups all feedback in a single review thread
+- ✅ Makes it easy for contributors to accept changes
+- ✅ Professional appearance with GitHub's native review UI
+
+**Ideal for:**
+- Auto-generated changelog entries (users can approve directly)
+- Automated suggestions that are usually correct
+- Teams wanting streamlined PR workflows
+
+### Regular PR Comments (Legacy: `pr-comment`)
+
+When `comment-mode: pr-comment`, the action posts a **regular PR comment**. This mode:
+- Posts comments directly to the PR
+- Useful if your workflow prefers traditional comments
+- Less intrusive for some workflows
+
+**Ideal for:**
+- Teams preferring traditional comment-based feedback
+- Custom integrations with comment-based tools
+
 ## Changelog File Naming
 
 When the action generates a changelog entry suggestion, it creates a well-structured slug-formatted filename based on the PR number and title.
@@ -215,6 +260,45 @@ important_notes: |
 ```
 
 See [logchange docs](https://logchange.dev/) for complete specification and additional fields.
+
+## Deployment
+
+### Publishing Your Own Version
+
+This action is designed to be self-hosted. To publish your own version:
+
+1. **Fork the repository** on GitHub
+2. **Update the Docker image reference** in `action.yml` to point to your container registry
+3. **Follow the deployment guide** in [DEPLOYMENT.md](DEPLOYMENT.md) for building and pushing Docker images
+4. **Create a GitHub Release** with semantic versioning (e.g., `v1.0.0`)
+5. **Use your version** in workflows with: `uses: YOUR-USERNAME/logchange-action@v1`
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
+- Building and pushing Docker images to your container registry
+- Creating GitHub Releases
+- Semantic versioning strategy
+- Local testing with the CLI tool
+
+### Local Testing
+
+Use the included testing CLI tool to validate the action locally without running a full GitHub workflow:
+
+```bash
+# Test changelog validation
+python3 test_action_cli.py validate --sample "title: Test\ntype: added"
+
+# Test changelog generation (requires Claude API key)
+export CLAUDE_API_KEY="sk-ant-..."
+python3 test_action_cli.py generate --diff changes.diff
+
+# See LOCAL_TESTING.md for comprehensive examples
+```
+
+## Credits
+
+This action was created by [Jan Høydahl](https://github.com/janhoy) with assistance from [Claude Code](https://claude.com/claude-code).
+
+ Special thanks to the [logchange](https://logchange.dev/) project team, particularly [Peter Zmilczak](https://github.com/marwin1991) (@marwin1991) for being incredibly responsive in fixing bugs, accepting feature requests, and providing excellent guidance. This work was inspired by the [Apache Solr](https://solr.apache.org/) project's needs for structured changelog management.
 
 ## License
 

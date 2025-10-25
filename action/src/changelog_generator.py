@@ -43,7 +43,7 @@ Only include 'important_notes' if the change significantly impacts users or requ
     def __init__(
         self,
         api_key: str,
-        model: str = "claude-3-5-sonnet-20241022",
+        model: str = "claude-opus-4-1-20250805",
         system_prompt: Optional[str] = None,
         changelog_language: str = "English",
         max_tokens_context: int = 5000,

@@ -1,241 +1,184 @@
 # Deployment Guide
 
-This guide explains how to deploy the Logchange Action to GitHub.
+This guide explains how to deploy your own version of the Logchange Action to GitHub.
+
+## Self-Hosting Overview
+
+The Logchange Action is designed to be self-hosted. You can fork the repository and publish your own version to:
+- **GitHub Container Registry (GHCR)** - Recommended, integrated with GitHub
+- **Docker Hub** - Public or private registry
+- **Any OCI-compliant container registry** - AWS ECR, Azure ACR, Google GCR, etc.
 
 ## Prerequisites
 
-- GitHub account with owner permissions
-- Docker installed
-- GitHub Personal Access Token with `write:packages` scope
+- GitHub account with owner permissions on your fork
+- Docker installed locally
 - Git installed
+- Container registry credentials (GHCR recommended)
 
-## Step 1: Release on GitHub
+## Step 1: Fork the Repository
 
-1. Switch to main and create a tag:
+1. Click "Fork" on the [original repository](https://github.com/solrbot/logchange-action)
+2. Clone your fork:
    ```bash
-   git checkout main && git pull origin main
-   git tag -a v1.0.0 -m "Initial release: Logchange GitHub Action"
-   git push origin v1.0.0
+   git clone https://github.com/YOUR-USERNAME/logchange-action.git
+   cd logchange-action
    ```
 
-2. Create GitHub Release at https://github.com/solrbot/logchange-action/releases with tag `v1.0.0` and release notes describing features
+## Step 2: Update Configuration
 
-## Step 2: Build and Push Docker Image to GHCR
-
-1. **Build the Docker image**:
-   ```bash
-   docker build -t ghcr.io/solrbot/logchange-action:latest .
-   docker tag ghcr.io/solrbot/logchange-action:latest ghcr.io/solrbot/logchange-action:v1.0.0
+1. **Update `action.yml`** to point to your container registry:
+   ```yaml
+   runs:
+     using: 'docker'
+     image: 'docker://ghcr.io/YOUR-USERNAME/logchange-action:latest'
+     entrypoint: '/action/src/entrypoint.sh'
    ```
 
-2. **Authenticate with GitHub Container Registry**:
+   Replace `YOUR-USERNAME` with your GitHub username. Choose your registry:
+   - **GHCR**: `ghcr.io/YOUR-USERNAME/logchange-action`
+   - **Docker Hub**: `docker.io/YOUR-USERNAME/logchange-action`
+   - **Other**: Use your registry's image path
+
+2. **Commit the change**:
+   ```bash
+   git add action.yml
+   git commit -m "Configure image registry for YOUR-USERNAME"
+   git push origin main
+   ```
+
+## Step 3: Build and Push Docker Image
+
+We assume GHCR, which is built into GitHub and integrates seamlessly with your repository.
+You can also choose other registries.
+
+1. **Authenticate with GHCR**:
    ```bash
    # Create a GitHub personal access token with 'write:packages' scope
-   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+   # at https://github.com/settings/tokens
+
+   echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR-USERNAME --password-stdin
+   ```
+
+2. **Build and tag the image**:
+   ```bash
+   docker build -t ghcr.io/YOUR-USERNAME/logchange-action:latest .
+   docker tag ghcr.io/YOUR-USERNAME/logchange-action:latest ghcr.io/YOUR-USERNAME/logchange-action:v1.0.0
    ```
 
 3. **Push to GHCR**:
    ```bash
-   docker push ghcr.io/solrbot/logchange-action:latest
-   docker push ghcr.io/solrbot/logchange-action:v1.0.0
+   docker push ghcr.io/YOUR-USERNAME/logchange-action:latest
+   docker push ghcr.io/YOUR-USERNAME/logchange-action:v1.0.0
    ```
 
-### Note on action.yml
+4. **Make package public** (optional, for public reuse):
+   - Go to your repository → Packages → logchange-action
+   - Click "Package settings"
+   - Change visibility to "Public"
 
-The `action.yml` file is already configured to use the GHCR image:
+## Step 4: Create a GitHub Release
+
+1. **Create a Git tag**:
+   ```bash
+   git tag -a v1.0.0 -m "Initial release: Logchange Action"
+   git push origin v1.0.0
+   ```
+
+2. **Create a GitHub Release**:
+   - Go to your repository → Releases → New release
+   - Use the tag `v1.0.0`
+   - Add release notes describing features and changes
+   - Publish the release
+
+## Step 5: Use Your Action
+
+Now you can use your action in workflows:
+
 ```yaml
-runs:
-  using: 'docker'
-  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
+- uses: YOUR-USERNAME/logchange-action@v1.0.0
+  with:
+    on-missing-entry: generate
+    claude-token: ${{ secrets.CLAUDE_API_KEY }}
 ```
 
-For version-specific releases, update the image reference to point to the specific version tag (e.g., `v1.0.0`).
+Or use the latest version:
+```yaml
+- uses: YOUR-USERNAME/logchange-action@latest
+```
 
-## Step 3: Testing the Action
+Or use the main branch (for development):
+```yaml
+- uses: YOUR-USERNAME/logchange-action@main
+```
 
-### Test with a Real PR
+## Semantic Versioning
 
-1. **Create a test repository** in the solrbot organization
-2. **Set up a test workflow** (`.github/workflows/test.yml`):
-   ```yaml
-   name: Test Logchange Action
+Follow semantic versioning for releases:
 
-   on:
-     pull_request:
-       types: [opened, synchronize, reopened]
+- **v1.0.0** - Major version (breaking changes)
+- **v1.1.0** - Minor version (new features, backwards compatible)
+- **v1.0.1** - Patch version (bug fixes)
 
-   jobs:
-     test:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v4
-         - uses: solrbot/logchange-action@v1.0.0
-           with:
-             on-missing-entry: warn
+## Updating to New Versions
+
+When you want to release a new version:
+
+1. **Update files as needed** (code, documentation, etc.)
+
+2. **Run tests locally**:
+   ```bash
+   python3 test_action_cli.py validate --sample "title: Test\ntype: added"
    ```
 
-3. **Create a test PR** without a changelog entry
-4. **Verify the action runs** and posts a comment
-
-### Test with Different Configurations
-
-Test each major feature:
-1. **Fail mode**: PR without entry should fail
-2. **Warn mode**: PR without entry should warn but pass
-3. **Generate mode** (with Claude token):
-   - PR without entry should generate suggestion
-   - Verify generated YAML is valid
-
-## Step 4: Version Management
-
-### Versioning Strategy
-
-Use semantic versioning:
-- `v1.0.0` - Initial release
-- `v1.1.0` - Minor feature additions
-- `v1.0.1` - Bug fixes
-- `v2.0.0` - Breaking changes
-
-### Creating New Releases
-
-For each release:
-
-1. **Update version number** in documentation if needed
-2. **Create and push tag**:
+3. **Tag and push a new release**:
    ```bash
-   git tag -a v1.1.0 -m "Feature: Add support for custom validators"
+   git tag -a v1.1.0 -m "Add feature X, fix bug Y"
    git push origin v1.1.0
    ```
 
-3. **Create GitHub Release** with changelog
-
-4. **Build and push Docker images to GHCR**:
+4. **Build and push new Docker images**:
    ```bash
-   docker build -t ghcr.io/solrbot/logchange-action:v1.1.0 .
-   docker tag ghcr.io/solrbot/logchange-action:v1.1.0 ghcr.io/solrbot/logchange-action:latest
-
-   # Authenticate with GHCR (if not already logged in)
-   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-
-   # Push both version-specific and latest tags
-   docker push ghcr.io/solrbot/logchange-action:v1.1.0
-   docker push ghcr.io/solrbot/logchange-action:latest
+   docker build -t ghcr.io/YOUR-USERNAME/logchange-action:v1.1.0 .
+   docker tag ghcr.io/YOUR-USERNAME/logchange-action:v1.1.0 ghcr.io/YOUR-USERNAME/logchange-action:latest
+   docker push ghcr.io/YOUR-USERNAME/logchange-action:v1.1.0
+   docker push ghcr.io/YOUR-USERNAME/logchange-action:latest
    ```
 
-5. **Update action.yml for version-specific releases** (optional):
-   ```bash
-   # Edit action.yml to reference the new version
-   # image: 'docker://ghcr.io/solrbot/logchange-action:v1.1.0'
-   ```
+5. **Create a GitHub Release** with the new tag
 
-## Step 5: Update Action.yml for Release
+## Automated Deployment (Optional)
 
-After each release, users can reference specific versions:
+You can automate Docker image builds with GitHub Actions. See `.github/workflows/docker-build-push.yml` for an example workflow that:
+- Builds Docker images on tag pushes
+- Pushes to your container registry
+- Creates major version tags (e.g., `v1` from `v1.0.0`)
 
-```yaml
-# Latest stable version
-- uses: solrbot/logchange-action@v1.0.0
+To enable this workflow:
+1. Ensure `action.yml` points to your registry
+2. Ensure your fork has Actions enabled
+3. Push a new tag to trigger the workflow
 
-# Latest in minor version series
-- uses: solrbot/logchange-action@v1.0
+## Troubleshooting
 
-# Latest version
-- uses: solrbot/logchange-action@latest
+### Docker push fails with authentication error
+- Verify your container registry credentials
+- Check that your token has the correct scopes (`write:packages` for GHCR)
+- Try re-authenticating: `docker logout && docker login ghcr.io`
 
-# Development version
-- uses: solrbot/logchange-action@main
-```
+### Workflow uses old image
+- Ensure `action.yml` points to the correct registry
+- Try using a specific version tag instead of `latest`
+- Clear Docker cache: `docker image rm <image-id>`
 
-## Step 6: Publish to GitHub Marketplace (Future)
+### Image not found in workflow
+- Verify the image was successfully pushed: Check your registry's web UI
+- Ensure the tag matches exactly in `action.yml`
+- Try rebuilding and pushing with verbose output: `docker push -verbose`
 
-To publish on GitHub Marketplace:
+## Support
 
-1. **Ensure requirements are met**:
-   - Action.yml has proper branding
-   - README.md is comprehensive
-   - LICENSE file is present
-   - No sensitive data in repo
-
-2. **Go to GitHub Marketplace settings**:
-   - https://github.com/solrbot/logchange-action/settings/actions
-   - Click "Publish this action to GitHub Marketplace"
-
-3. **Fill out the form**:
-   - Category: Utilities
-   - Description: (from action.yml)
-   - Primary Language: Python
-
-## Monitoring
-
-### Check Action Usage
-
-Track usage metrics:
-- GitHub Insights tab shows workflow runs
-- Check for issues or feature requests
-- Monitor for error patterns in logs
-
-### Troubleshooting
-
-If users report issues:
-
-1. **Check logs**: Review action logs in their workflows
-2. **Create fix**: Make necessary changes in main branch
-3. **Release patch**: Tag and release as `v1.0.1`, etc.
-4. **Notify users**: Update README with any workarounds
-
-## Maintenance Plan
-
-1. **Weekly**: Check for issues and PRs
-2. **Monthly**: Review usage metrics
-3. **Quarterly**: Consider feature enhancements
-4. **As needed**: Security updates and bug fixes
-
-## Rollback Plan
-
-If a release has critical issues:
-
-1. **Identify the issue** through user reports or testing
-2. **Revert to previous version**:
-   ```bash
-   # Tag the issue version as broken
-   git tag -a v1.0.0-broken -m "Broken release"
-   git push origin v1.0.0-broken
-
-   # Update release documentation
-   ```
-
-3. **Release hotfix**:
-   ```bash
-   git tag -a v1.0.1 -m "Hotfix for critical issue"
-   git push origin v1.0.1
-   ```
-
-4. **Update users**: Post notice in releases
-
-## Security Considerations for Deployment
-
-1. **API Tokens**:
-   - Never commit credentials
-   - Use GitHub Secrets for Claude token
-   - Rotate tokens regularly
-
-2. **Docker Image**:
-   - Keep dependencies up to date
-   - Scan for vulnerabilities
-   - Use specific Python version tags
-
-3. **Access Control**:
-   - Only maintainers can push releases
-   - Require reviews for main branch
-   - Use branch protection rules
-
-## Support Resources
-
-- **Documentation**: README.md and ARCHITECTURE.md
-- **Examples**: examples/ directory with sample workflows
-- **Tests**: tests/ directory with unit tests
-- **Issues**: GitHub Issues for bug reports and features
-
----
-
-For questions or issues, please open a GitHub issue.
+For issues with:
+- **Logchange format**: See [logchange documentation](https://logchange.dev/)
+- **This action**: Check [CONTRIBUTING.md](CONTRIBUTING.md) and [LOCAL_TESTING.md](LOCAL_TESTING.md)
+- **Claude API**: See [Claude documentation](https://docs.anthropic.com/)
