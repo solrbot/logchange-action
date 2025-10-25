@@ -187,16 +187,19 @@ class LegacyChangelogHandler:
         pr_title = pr_info.get("title", "")
         entry_type = context.get("type", "unknown")
 
-        prompt = f"""I have extracted a changelog entry from a legacy {entry_type} format changelog file.
-Please convert this legacy changelog entry into a logchange-formatted YAML entry.
+        prompt = f"""I have extracted a changelog entry that was carefully written by the author.
+I need to convert it into logchange-formatted YAML while preserving the original text and intent.
 
-IMPORTANT INSTRUCTIONS:
-1. Extract the essence of what changed from the legacy entry
-2. Create a clear, concise title for the logchange entry
-3. Infer the appropriate type (added, changed, fixed, security, dependency_update, etc.) based on the content
-4. Use the PR title and changelog entry to determine the description
-5. Ensure the generated YAML is valid and can be parsed directly
-6. Output ONLY the YAML with no additional text or markdown formatting
+IMPORTANT: This is the author's own writing. Preserve it as closely as possible.
+
+CONVERSION INSTRUCTIONS:
+1. **Preserve the original text**: The changelog entry was written by the author. Keep the wording and meaning as-is.
+2. **Gentle rewriting only**: Only rewrite if it's grammatically incorrect or unclear compared to the actual changes.
+3. **Extract metadata**: Look for issue links (#123, JIRA-123, etc.) and additional contributors mentioned in the text.
+4. **Determine type**: Infer the type (added, changed, fixed, security, dependency_update, etc.) from the content.
+5. **Create title**: Use the existing entry text or PR title to create a clear, concise title if one doesn't exist.
+6. **Valid YAML**: Ensure the generated YAML is valid and properly formatted.
+7. **Output format**: Output ONLY the YAML with no additional text, markdown, or comments.
 
 Legacy Changelog Entry:
 ```
@@ -207,7 +210,7 @@ PR Title: {pr_title}
 
 Entry Type Detected: {entry_type}
 
-Now generate a logchange-formatted YAML entry that captures the same information:"""
+Now convert this into logchange format while preserving the author's original text:"""
 
         return prompt
 
