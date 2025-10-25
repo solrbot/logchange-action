@@ -55,6 +55,24 @@ def generate_changelog_slug(pr_number: int, title: str = "") -> str:
 class LogchangeAction:
     """Main action class handling the workflow"""
 
+    @staticmethod
+    def _get_input(input_name: str, default: str = "") -> str:
+        """Get input value, trying both hyphenated and underscored versions.
+
+        GitHub Actions passes inputs with hyphens as-is in env vars (e.g., INPUT_ON-MISSING-ENTRY),
+        but also provides underscored versions (e.g., INPUT_ON_MISSING_ENTRY).
+        We try both for compatibility.
+        """
+        underscored = "INPUT_" + input_name.upper().replace("-", "_")
+        hyphenated = "INPUT_" + input_name.upper()
+
+        value = os.getenv(underscored) or os.getenv(hyphenated) or default
+        logger.debug(
+            f"_get_input({input_name}): underscore={underscored}={os.getenv(underscored)}, "
+            f"hyphen={hyphenated}={os.getenv(hyphenated)}, result={value}"
+        )
+        return value
+
     def __init__(self):
         """Initialize the action with environment variables"""
         # GitHub context
@@ -63,72 +81,69 @@ class LogchangeAction:
         self.github_api_url = os.getenv("GITHUB_API_URL", "https://api.github.com")
 
         # Action inputs
-        self.changelog_path = os.getenv("INPUT_CHANGELOG_PATH", "changelog/unreleased")
-        self.on_missing_entry = os.getenv("INPUT_ON_MISSING_ENTRY", "fail").lower()
-        self.missing_entry_message = os.getenv(
-            "INPUT_MISSING_ENTRY_MESSAGE",
+        self.changelog_path = self._get_input("changelog-path", "changelog/unreleased")
+        self.on_missing_entry = self._get_input("on-missing-entry", "fail").lower()
+        self.missing_entry_message = self._get_input(
+            "missing-entry-message",
             "This pull request is missing a logchange entry in the changelog/unreleased directory",
         )
-        self.skip_files_regex = os.getenv("INPUT_SKIP_FILES_REGEX", "")
-        self.claude_token = os.getenv("INPUT_CLAUDE_TOKEN", "")
-        self.claude_model = os.getenv(
-            "INPUT_CLAUDE_MODEL", "claude-3-5-sonnet-20241022"
+        self.skip_files_regex = self._get_input("skip-files-regex", "")
+        self.claude_token = self._get_input("claude-token", "")
+        self.claude_model = self._get_input(
+            "claude-model", "claude-3-5-sonnet-20241022"
         )
-        self.claude_system_prompt = os.getenv("INPUT_CLAUDE_SYSTEM_PROMPT", "")
-        self.changelog_language = os.getenv("INPUT_CHANGELOG_LANGUAGE", "English")
-        self.max_tokens_context = int(os.getenv("INPUT_MAX_TOKENS_CONTEXT", "5000"))
-        self.max_tokens_per_file = int(os.getenv("INPUT_MAX_TOKENS_PER_FILE", "1000"))
+        self.claude_system_prompt = self._get_input("claude-system-prompt", "")
+        self.changelog_language = self._get_input("changelog-language", "English")
+        self.max_tokens_context = int(self._get_input("max-tokens-context", "5000"))
+        self.max_tokens_per_file = int(self._get_input("max-tokens-per-file", "1000"))
 
         # Parse configuration
         self.changelog_types = self._parse_list_input(
-            "INPUT_CHANGELOG_TYPES",
+            "changelog-types",
             "added,changed,deprecated,removed,fixed,security,dependency_update,other",
         )
-        self.mandatory_fields = self._parse_list_input(
-            "INPUT_MANDATORY_FIELDS", "title"
-        )
-        self.forbidden_fields = self._parse_list_input("INPUT_FORBIDDEN_FIELDS", "")
-        self.optional_fields = self._parse_list_input("INPUT_OPTIONAL_FIELDS", "")
+        self.mandatory_fields = self._parse_list_input("mandatory-fields", "title")
+        self.forbidden_fields = self._parse_list_input("forbidden-fields", "")
+        self.optional_fields = self._parse_list_input("optional-fields", "")
 
         # Legacy changelog configuration (disabled by default)
         self.legacy_changelog_paths = self._parse_list_input(
-            "INPUT_LEGACY_CHANGELOG_PATHS",
-            "",  # Empty string disables legacy changelog detection
+            "legacy-changelog-paths", ""
         )
-        self.on_legacy_entry = os.getenv("INPUT_ON_LEGACY_ENTRY", "convert").lower()
-        self.on_legacy_and_logchange = os.getenv(
-            "INPUT_ON_LEGACY_AND_LOGCHANGE", "warn"
+        self.on_legacy_entry = self._get_input("on-legacy-entry", "convert").lower()
+        self.on_legacy_and_logchange = self._get_input(
+            "on-legacy-and-logchange", "warn"
         ).lower()
-        self.legacy_entry_message = os.getenv(
-            "INPUT_LEGACY_ENTRY_MESSAGE",
+        self.legacy_entry_message = self._get_input(
+            "legacy-entry-message",
             "I detected a legacy changelog entry. Converting it to logchange format...",
         )
-        self.legacy_conflict_message = os.getenv(
-            "INPUT_LEGACY_CONFLICT_MESSAGE",
+        self.legacy_conflict_message = self._get_input(
+            "legacy-conflict-message",
             "This PR contains both legacy and logchange changelog entries. Please use only logchange format.",
         )
 
-        self.validation_fail_message = os.getenv(
-            "INPUT_VALIDATION_FAIL_MESSAGE",
+        self.validation_fail_message = self._get_input(
+            "validation-fail-message",
             "The changelog entry does not comply with the required format",
         )
         self.validation_fail_workflow = (
-            os.getenv("INPUT_VALIDATION_FAIL_WORKFLOW", "true").lower() == "true"
+            self._get_input("validation-fail-workflow", "true").lower() == "true"
         )
 
         # Metadata extraction configuration
-        self.external_issue_regex = os.getenv("INPUT_EXTERNAL_ISSUE_REGEX", "")
-        self.external_issue_url_template = os.getenv(
-            "INPUT_EXTERNAL_ISSUE_URL_TEMPLATE", ""
+        self.external_issue_regex = self._get_input("external-issue-regex", "")
+        self.external_issue_url_template = self._get_input(
+            "external-issue-url-template", ""
         )
         self.generate_important_notes = (
-            os.getenv("INPUT_GENERATE_IMPORTANT_NOTES", "true").lower() == "true"
+            self._get_input("generate-important-notes", "true").lower() == "true"
         )
         self.github_issue_detection = (
-            os.getenv("INPUT_GITHUB_ISSUE_DETECTION", "true").lower() == "true"
+            self._get_input("github-issue-detection", "true").lower() == "true"
         )
         self.issue_tracker_url_detection = (
-            os.getenv("INPUT_ISSUE_TRACKER_URL_DETECTION", "true").lower() == "true"
+            self._get_input("issue-tracker-url-detection", "true").lower() == "true"
         )
 
         # Initialize clients
@@ -191,9 +206,9 @@ class LogchangeAction:
             logger.error(f"Failed to load GitHub event: {e}")
             return {}
 
-    def _parse_list_input(self, env_var: str, default: str) -> List[str]:
+    def _parse_list_input(self, input_name: str, default: str) -> List[str]:
         """Parse comma-separated input into a list"""
-        value = os.getenv(env_var, default)
+        value = self._get_input(input_name, default)
         if not value:
             return []
         return [item.strip() for item in value.split(",") if item.strip()]
