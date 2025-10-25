@@ -228,3 +228,65 @@ class GitHubClient:
         except Exception as e:
             logger.error(f"Failed to get PR info: {e}")
             return "", ""
+
+    def create_review_with_suggestion(
+        self, event: str, body: str, comments: List[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Create a review on the PR (approval, request_changes, or comment).
+        Can include suggested changes for specific files.
+
+        Args:
+            event: "APPROVE", "REQUEST_CHANGES", or "COMMENT"
+            body: The review body/comment
+            comments: List of review comments with optional suggestions:
+                    [{"path": "file.txt", "line": 10, "body": "comment"}]
+                    For suggested changes: {"path": "...", "line": ..., "body": "...",
+                    "suggestion": "new content"}
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.pr_number:
+            logger.warning("No PR number found")
+            return False
+
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
+
+        payload = {
+            "body": body,
+            "event": event,
+        }
+
+        if comments:
+            payload["comments"] = comments
+
+        try:
+            response = self.session.post(url, json=payload)
+            response.raise_for_status()
+            logger.info(f"Successfully created review (event: {event})")
+            return True
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to create review: {e}")
+            return False
+
+    def comment_or_review(self, body: str, mode: str = "review-comment") -> bool:
+        """
+        Post a comment on PR using the specified mode.
+
+        Args:
+            body: The comment body
+            mode: "review-comment" for review comment, "pr-comment" for regular comment
+
+        Returns:
+            True if successful
+        """
+        if mode == "review-comment":
+            # Create a review with the body as a general review comment
+            return self.create_review_with_suggestion(
+                event="COMMENT", body=body, comments=None
+            )
+        else:
+            # Regular PR comment
+            return self.comment_on_pr(body)
