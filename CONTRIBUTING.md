@@ -15,13 +15,13 @@ Uses [Black](https://github.com/psf/black), [isort](https://pycqa.github.io/isor
 
 ```bash
 # Format code
-black action/src/ tests/ test_generator.py
-isort action/src/ tests/ test_generator.py
+black action/src/ tests/ test_action_cli.py
+isort action/src/ tests/ test_action_cli.py
 
 # Verify before committing
-black --check action/src/ tests/ test_generator.py && \
-isort --check-only action/src/ tests/ test_generator.py && \
-flake8 action/src/ tests/ test_generator.py
+black --check action/src/ tests/ test_action_cli.py && \
+isort --check-only action/src/ tests/ test_action_cli.py && \
+flake8 action/src/ tests/ test_action_cli.py
 ```
 
 ## Testing
@@ -83,16 +83,16 @@ When making changes to the codebase:
 
 4. **Format your code**:
    ```bash
-   black action/src/ tests/ test_generator.py
-   isort action/src/ tests/ test_generator.py
+   black action/src/ tests/ test_action_cli.py
+   isort action/src/ tests/ test_action_cli.py
    ```
 
 5. **Run all checks**:
    ```bash
    # Run formatting checks
-   black --check action/src/ tests/ test_generator.py
-   isort --check-only action/src/ tests/ test_generator.py
-   flake8 action/src/ tests/ test_generator.py
+   black --check action/src/ tests/ test_action_cli.py
+   isort --check-only action/src/ tests/ test_action_cli.py
+   flake8 action/src/ tests/ test_action_cli.py
 
    # Run tests
    python3 -m pytest tests/ -v

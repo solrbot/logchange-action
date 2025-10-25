@@ -1,6 +1,6 @@
 # Local Testing Guide
 
-This guide explains how to test the Logchange Action locally without requiring a real GitHub PR.
+This guide explains how to test the Logchange Action code locally without requiring a real GitHub PR.
 
 ## Quick Start
 
