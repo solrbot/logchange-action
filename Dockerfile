@@ -5,33 +5,26 @@ WORKDIR /build
 
 # Copy and install dependencies
 COPY action/src/requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Final stage
 FROM python:3.11-slim
 
 WORKDIR /action
 
-# Create non-root user with minimal privileges
-RUN groupadd -r action && useradd -r -g action action
-
-# Copy only necessary Python packages from builder
-COPY --from=builder --chown=action:action /root/.local /home/action/.local
+# Copy installed packages from builder
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 # Copy action source code
-COPY --chown=action:action action/src /action/src
+COPY action/src /action/src
 
 # Make entrypoint executable
 RUN chmod +x /action/src/entrypoint.sh
 
-# Set Python path to include user site-packages
-ENV PATH=/home/action/.local/bin:$PATH \
-    PYTHONUNBUFFERED=1 \
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/action/src
 
-# Switch to non-root user
-USER action
-
-# Run as non-root user
+# Run as root (required for GitHub Actions to access workspace)
 ENTRYPOINT ["/action/src/entrypoint.sh"]
