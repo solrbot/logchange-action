@@ -4,6 +4,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from changelog_generator import ChangelogGenerator
+
 logger = logging.getLogger(__name__)
 
 
@@ -264,7 +266,12 @@ class LegacyChangelogHandler:
         }
 
     def create_conversion_prompt(
-        self, entry_text: str, pr_info: Dict[str, Any], context: Dict[str, Any]
+        self,
+        entry_text: str,
+        pr_info: Dict[str, Any],
+        context: Dict[str, Any],
+        changelog_types: Optional[List[str]] = None,
+        forbidden_fields: Optional[List[str]] = None,
     ) -> str:
         """
         Create a custom user prompt for converting legacy entry to logchange format
@@ -273,12 +280,38 @@ class LegacyChangelogHandler:
             entry_text: The legacy changelog entry text
             pr_info: PR information from GitHub
             context: Context about the legacy entry
+            changelog_types: List of allowed changelog types (uses defaults if not provided)
+            forbidden_fields: List of forbidden fields (from configuration)
 
         Returns:
             The user prompt for Claude
         """
         pr_title = pr_info.get("title", "")
         entry_type = context.get("type", "unknown")
+
+        # Use provided types or defaults
+        if changelog_types is None:
+            changelog_types = [
+                "added",
+                "changed",
+                "deprecated",
+                "removed",
+                "fixed",
+                "security",
+                "dependency_update",
+                "other",
+            ]
+
+        # Create a temporary generator to access the validation rules building method
+        # We need to pass a dummy API key since we're only using the method, not making API calls
+        temp_generator = ChangelogGenerator(
+            api_key="dummy",
+            changelog_types=changelog_types,
+            forbidden_fields=forbidden_fields or [],
+        )
+        validation_section = temp_generator._build_validation_rules_section(
+            changelog_types, forbidden_fields
+        )
 
         prompt = f"""I have extracted a changelog entry that was carefully written by the author.
 I need to convert it into logchange-formatted YAML while preserving the original text and intent.
@@ -289,7 +322,7 @@ CONVERSION INSTRUCTIONS:
 1. **Preserve the original text**: The changelog entry was written by the author. Keep the wording and meaning as-is.
 2. **Gentle rewriting only**: Only rewrite if it's grammatically incorrect or unclear compared to the actual changes.
 3. **Extract metadata**: Look for issue links (#123, JIRA-123, etc.) and additional contributors mentioned in the text.
-4. **Determine type**: Infer the type (added, changed, fixed, security, dependency_update, etc.) from the content.
+4. **Determine type**: Infer the type from the content. Allowed types: {', '.join(changelog_types)}
 5. **Create title**: Use the existing entry text or PR title to create a clear, concise title if one doesn't exist.
 6. **Valid YAML**: Ensure the generated YAML is valid and properly formatted.
 7. **Output format**: Output ONLY the YAML with no additional text, markdown, or comments.
@@ -302,6 +335,8 @@ Legacy Changelog Entry:
 PR Title: {pr_title}
 
 Entry Type Detected: {entry_type}
+
+{validation_section}
 
 Now convert this into logchange format while preserving the author's original text:"""
 

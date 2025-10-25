@@ -17,12 +17,15 @@ class ChangelogGenerator:
 Your task is to generate a logchange-formatted YAML entry based on the provided pull request information.
 
 Create a changelog entry that:
-1. Has a clear, concise title describing the change, most often in a single sentence. If the change is comprehensive or complex, consider including a summary of max 400 characters.
-2. Includes the appropriate type (added, changed, fixed, security, dependency_update, etc.)
-3. Lists relevant authors
-4. Follows the logchange specification
+1. Has a clear, concise title describing the change, most often in a single sentence. If the change is comprehensive or complex, consider including a summary of max 400 characters. Break long titles (>80 chars) using YAML line continuation syntax.
+2. Includes the MOST SPECIFIC and ACCURATE type (added, changed, fixed, security, dependency_update, removed, etc.)
+3. Lists relevant authors with proper structure
+4. Extracts issue numbers from PR description (Fixes #123, closes #456, etc.) as 'issues' field with numbers only (no '#')
+5. Follows the logchange specification EXACTLY - only use valid fields
 
 IMPORTANT: If the PR description contradicts the actual code changes (shown in the diff), prioritize the code changes over the description. The diff represents the actual implementation and is more reliable than potentially outdated PR descriptions. Base your title on what the code actually does.
+
+CRITICAL: Only use valid logchange fields. Never hallucinate fields like 'references', 'contributors', or 'fixes'. Always verify your output is valid YAML.
 
 Always output ONLY valid YAML that can be parsed directly, with no additional text or markdown formatting.
 The YAML should be a single object with the required fields."""
@@ -39,6 +42,76 @@ Consider whether to add an 'important_notes' field to highlight:
 - Database migration requirements
 
 Only include 'important_notes' if the change significantly impacts users or requires attention during upgrades."""
+
+    def _build_validation_rules_section(
+        self, changelog_types: list, forbidden_fields: Optional[list] = None
+    ) -> str:
+        """
+        Build validation and self-inspection section with configured changelog types
+
+        Args:
+            changelog_types: List of allowed changelog types from configuration
+            forbidden_fields: List of fields that must not be used (from configuration)
+
+        Returns:
+            Validation rules section as a string
+        """
+        types_list = ", ".join(changelog_types)
+        forbidden_fields = forbidden_fields or []
+
+        # Standard fields that are always invalid (common mistakes/hallucinations)
+        invalid_fields_lines = [
+            "- references (not a valid logchange field)",
+            "- contributors (use authors instead)",
+            "- fixes (use issues instead)",
+        ]
+
+        # Add user-configured forbidden fields
+        for field in forbidden_fields:
+            invalid_fields_lines.append(f"- {field} (forbidden by configuration)")
+
+        # Build invalid fields section only if there are fields to list
+        invalid_fields_section = ""
+        if invalid_fields_lines:
+            invalid_fields_text = "\n".join(invalid_fields_lines)
+            invalid_fields_section = f"""
+INVALID FIELDS - DO NOT USE:
+{invalid_fields_text}
+"""
+
+        return f"""## YAML Field Validation Rules
+
+VALID LOGCHANGE FIELDS (only these allowed):
+- title (required, string, max 200 chars, break long titles at ~80 chars with YAML continuation)
+- type (required, must be one of: {types_list})
+- description (optional, string)
+- authors (required, list of {{name, nick?, url?}})
+- modules (optional, list of strings)
+- issues (optional, list of NUMBERS ONLY, no '#' symbol. Extract from PR description and legacy text)
+- links (optional, list of {{name, url}})
+- important_notes (optional, string)
+- merge_requests (optional, list of numbers){invalid_fields_section}
+## Self-Inspection Before Output
+
+BEFORE outputting the YAML, verify:
+1. title: Is it under 200 characters? If >80 chars, break it using YAML line continuation (|, >, or multi-line)
+2. type: Is it exactly one of the allowed types ({types_list})? NOT just "changed" for everything - be precise
+3. authors: Is it a list? Each entry has 'name' field? No extra/invalid fields?
+4. issues: Contains ONLY numbers (e.g., 123, not "#123")? Extracted from text like "Fixes #123" or "(#111)"?
+5. All fields: NO hallucinated fields or forbidden fields?
+6. YAML syntax: Valid YAML that parses without errors?
+
+If you find any violations, CORRECT THEM before outputting the final YAML.
+
+## Type Detection Guidelines
+
+Use the MOST SPECIFIC type from the allowed list above. Examples for common types:
+- "removed" for deletions, deprecations of features
+- "fixed" for bug fixes, corrections
+- "security" for security issues
+- "dependency_update" for dependency changes
+- "added" for new features only
+- "changed" for modifications that aren't fixes"""
 
     def __init__(
         self,
@@ -99,13 +172,35 @@ Only include 'important_notes' if the change significantly impacts users or requ
             if changelog_language != "English"
             else ""
         )
-        prompt_parts = [system_prompt or self.DEFAULT_SYSTEM_PROMPT]
 
-        # Add important_notes instruction if enabled
-        if self.generate_important_notes:
-            prompt_parts.append(self.DEFAULT_IMPORTANT_NOTES_INSTRUCTION)
+        # Determine if using custom system prompt
+        using_custom_prompt = system_prompt is not None
 
+        prompt_parts = []
+
+        # Always add base prompt (either custom or default)
+        if using_custom_prompt:
+            prompt_parts.append(system_prompt)
+        else:
+            prompt_parts.append(self.DEFAULT_SYSTEM_PROMPT)
+
+        # Add configuration-based sections only if using default prompt
+        # If user provides custom prompt, they need to handle these themselves
+        if not using_custom_prompt:
+            # Add validation and self-inspection guidelines with configured types and forbidden fields
+            prompt_parts.append(
+                self._build_validation_rules_section(
+                    self.changelog_types, self.forbidden_fields
+                )
+            )
+
+            # Add important_notes instruction if enabled
+            if self.generate_important_notes:
+                prompt_parts.append(self.DEFAULT_IMPORTANT_NOTES_INSTRUCTION)
+
+        # Always add language instruction (even with custom prompt)
         prompt_parts.append(lang_instruction)
+
         self.system_prompt = "\n".join(p for p in prompt_parts if p).strip()
 
         self.api_url = "https://api.anthropic.com/v1/messages"
