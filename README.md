@@ -21,12 +21,12 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 **Basic (fail on missing entry):**
 ```yaml
 - uses: actions/checkout@v4
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
 ```
 
 **With AI generation (requires Claude API key):**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -34,13 +34,10 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **With warnings only:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: warn
 ```
-
-> **Replace `YOUR-GITHUB-USER`** with the GitHub username where you've forked/published this action.
-> See [Deployment](#deployment) for detailed publishing instructions.
 
 ## Configuration
 
@@ -86,14 +83,14 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **Skip changelog for docs-only changes:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     skip-files-regex: '^(README\.md|docs/|\.github/)'
 ```
 
 **Strict enterprise rules:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -104,7 +101,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **German language generation:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -113,7 +110,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **With external issue tracker (JIRA):**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -123,7 +120,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **With multiple external issue trackers (Azure DevOps):**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -133,7 +130,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **Disable important notes generation:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
@@ -142,7 +139,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 **Disable GitHub issue detection:**
 ```yaml
-- uses: YOUR-GITHUB-USER/logchange-action@v1
+- uses: solrbot/logchange-action@v1
   with:
     on-missing-entry: generate
     claude-token: ${{ secrets.CLAUDE_API_KEY }}

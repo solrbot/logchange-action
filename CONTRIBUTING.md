@@ -3,13 +3,11 @@
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/logchange-action.git
+git clone https://github.com/solrbot/logchange-action.git
 cd logchange-action
 pip install -r action/src/requirements.txt
 pip install black isort flake8 pytest pytest-cov
 ```
-
-> Replace `YOUR-USERNAME` with your GitHub username if you've forked the repository.
 
 ## Code Style and Formatting
 

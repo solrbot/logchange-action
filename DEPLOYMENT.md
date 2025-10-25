@@ -49,9 +49,8 @@ The Logchange Action is designed to be self-hosted. You can fork the repository 
 
 ## Step 3: Build and Push Docker Image
 
-### Option A: GitHub Container Registry (GHCR) - Recommended
-
-GHCR is built into GitHub and integrates seamlessly with your repository.
+We assume GHCR, which is built into GitHub and integrates seamlessly with your repository.
+You can also choose other registries.
 
 1. **Authenticate with GHCR**:
    ```bash
@@ -77,33 +76,6 @@ GHCR is built into GitHub and integrates seamlessly with your repository.
    - Go to your repository → Packages → logchange-action
    - Click "Package settings"
    - Change visibility to "Public"
-
-### Option B: Docker Hub
-
-1. **Authenticate with Docker Hub**:
-   ```bash
-   docker login -u YOUR-DOCKERHUB-USERNAME
-   ```
-
-2. **Build and tag the image**:
-   ```bash
-   docker build -t YOUR-DOCKERHUB-USERNAME/logchange-action:latest .
-   docker tag YOUR-DOCKERHUB-USERNAME/logchange-action:latest YOUR-DOCKERHUB-USERNAME/logchange-action:v1.0.0
-   ```
-
-3. **Push to Docker Hub**:
-   ```bash
-   docker push YOUR-DOCKERHUB-USERNAME/logchange-action:latest
-   docker push YOUR-DOCKERHUB-USERNAME/logchange-action:v1.0.0
-   ```
-
-### Option C: Other Registries (AWS ECR, Azure ACR, etc.)
-
-Follow your registry's authentication and push procedures. The build command remains the same:
-```bash
-docker build -t YOUR-REGISTRY/logchange-action:latest .
-docker push YOUR-REGISTRY/logchange-action:latest
-```
 
 ## Step 4: Create a GitHub Release
 
