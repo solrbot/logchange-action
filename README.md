@@ -287,12 +287,16 @@ Use the included testing CLI tool to validate the action locally without running
 # Test changelog validation
 python3 test_action_cli.py validate --sample "title: Test\ntype: added"
 
-# Test changelog generation (requires Claude API key)
+# Test changelog generation with provided samples (requires Claude API key)
 export CLAUDE_API_KEY="sk-ant-..."
-python3 test_action_cli.py generate --diff changes.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 
-# See LOCAL_TESTING.md for comprehensive examples
+# See LOCAL_TESTING.md for comprehensive examples and how to create custom test files
 ```
+
+Sample test files are included in `examples/`:
+- `test-changes.diff` - Real-world code changes (authentication feature)
+- `test-pr-info.json` - Sample PR data with GitHub issues and external tracker references
 
 ## Credits
 

@@ -8,12 +8,12 @@ This guide explains how to test the Logchange Action code locally without requir
 # Test validation (no API key needed)
 python3 test_action_cli.py validate --sample "title: Test\ntype: added"
 
-# Test generation (requires Claude API key)
+# Test generation with sample files (requires Claude API key)
 export CLAUDE_API_KEY="sk-ant-..."
-python3 test_action_cli.py generate --diff changes.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 
-# Test metadata extraction
-python3 test_action_cli.py extract --diff changes.diff
+# Test metadata extraction with samples
+python3 test_action_cli.py extract --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 
 # Test legacy changelog detection
 python3 test_action_cli.py legacy --sample "## [1.0.0]\n### Added\n- Feature"
@@ -37,27 +37,32 @@ Test the Claude API integration and changelog generation.
 - CLAUDE_API_KEY environment variable or --token argument
 - A diff file showing the code changes
 
-**Basic usage:**
+**Basic usage with sample files:**
 
 ```bash
 export CLAUDE_API_KEY="sk-ant-api03-..."
-python3 test_action_cli.py generate --diff changes.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 ```
 
-**With PR information:**
+Sample files are included in the repository:
+- `examples/test-changes.diff` - Real-world diff with authentication feature changes
+- `examples/test-pr-info.json` - Sample PR info with GitHub issues and external tracker references
+
+**With custom PR information:**
 
 ```bash
 python3 test_action_cli.py generate \
-  --diff changes.diff \
-  --pr-title "Add authentication feature" \
-  --pr-info pr_info.json
+  --diff examples/test-changes.diff \
+  --pr-title "Add custom feature" \
+  --pr-info your-pr-info.json
 ```
 
 **With custom validation rules:**
 
 ```bash
 python3 test_action_cli.py generate \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --mandatory "title,type,authors" \
   --forbidden "draft,internal" \
   --types "added,fixed,security"
@@ -67,7 +72,8 @@ python3 test_action_cli.py generate \
 
 ```bash
 python3 test_action_cli.py generate \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --language German
 ```
 
@@ -75,7 +81,8 @@ python3 test_action_cli.py generate \
 
 ```bash
 python3 test_action_cli.py generate \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --external-issue-regex "JIRA-(\d+)" \
   --external-issue-url-template "https://jira.example.com/browse/JIRA-{id}"
 ```
@@ -84,14 +91,15 @@ python3 test_action_cli.py generate \
 
 ```bash
 python3 test_action_cli.py generate \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --system-prompt custom_prompt.txt
 ```
 
 **With verbose logging:**
 
 ```bash
-python3 test_action_cli.py generate --diff changes.diff --verbose
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json --verbose
 ```
 
 ### 2. VALIDATE - Test Changelog Validation
@@ -138,23 +146,29 @@ python3 test_action_cli.py validate \
 
 Test extraction of metadata from PR description and diff (issues, links, external trackers).
 
-**Basic usage:**
+**Basic usage with sample files:**
 
 ```bash
-python3 test_action_cli.py extract --diff changes.diff
+python3 test_action_cli.py extract --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 ```
 
-**With PR information:**
+This will extract:
+- GitHub issues (#123, #456)
+- External issue tracker references (JIRA-789)
+- PR metadata (title, author, URL)
+
+**With custom PR information:**
 
 ```bash
-python3 test_action_cli.py extract --diff changes.diff --pr-info pr_info.json
+python3 test_action_cli.py extract --diff your-changes.diff --pr-info your-pr-info.json
 ```
 
 **With external issue tracker:**
 
 ```bash
 python3 test_action_cli.py extract \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --external-issue-regex "JIRA-(\d+)" \
   --external-issue-url-template "https://jira.example.com/browse/JIRA-{id}"
 ```
@@ -163,7 +177,8 @@ python3 test_action_cli.py extract \
 
 ```bash
 python3 test_action_cli.py extract \
-  --diff changes.diff \
+  --diff examples/test-changes.diff \
+  --pr-info examples/test-pr-info.json \
   --github-issue-detection true \
   --issue-tracker-url-detection true
 ```
@@ -192,41 +207,42 @@ python3 test_action_cli.py legacy --paths "CHANGELOG.md,HISTORY.txt,NEWS.md"
 
 ## Creating Test Files
 
-### Sample Diff File
+### Sample Files Included
 
-Create `test_changes.diff`:
+The repository includes ready-to-use sample files:
 
-```diff
-diff --git a/src/main.py b/src/main.py
-index 1234567..abcdefg 100644
---- a/src/main.py
-+++ b/src/main.py
-@@ -1,5 +1,10 @@
- def main():
-+    """Main entry point"""
-+    # Initialize authenticator
-+    auth = authenticate()
-+    # Process requests
-     print("Hello")
+**Diff file**: `examples/test-changes.diff`
+- Contains authentication feature implementation
+- Includes new file creation, modifications, and tests
+- Realistic code changes with import statements and docstrings
 
--    run()
-+    run(auth)
+**PR info file**: `examples/test-pr-info.json`
+- GitHub issues references (#123, #456)
+- External tracker reference (JIRA-789)
+- PR title, description, and author info
+- Covers all metadata extraction scenarios
+
+Use these to get started immediately:
+```bash
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 ```
 
-### Sample PR Info File
+### Creating Custom Test Files
 
-Create `pr_info.json`:
+To create your own test files, use the included samples as templates:
 
-```json
-{
-  "number": 42,
-  "title": "Add authentication support",
-  "body": "This PR adds OAuth2 authentication.\n\nFixes #123\nCloses #456\nRelated to JIRA-789",
-  "user": {
-    "login": "developer-name",
-    "html_url": "https://github.com/developer-name"
-  }
-}
+See `examples/test-changes.diff` and `examples/test-pr-info.json` for reference format and structure.
+
+You can copy and modify these files for your specific testing needs:
+
+```bash
+# Copy and customize the sample files
+cp examples/test-changes.diff my-custom-changes.diff
+cp examples/test-pr-info.json my-custom-pr-info.json
+
+# Edit them with your own code changes and PR data
+# Then test:
+python3 test_action_cli.py generate --diff my-custom-changes.diff --pr-info my-custom-pr-info.json
 ```
 
 ### Sample Changelog Entry
@@ -255,19 +271,15 @@ important_notes: |
 Test that the action can generate a complete changelog entry:
 
 ```bash
-# 1. Create a diff file with your changes
-cat > test.diff << 'EOF'
-diff --git a/api.py b/api.py
-+def authenticate(token):
-+    """Authenticate user with token"""
-+    return validate_token(token)
-EOF
-
-# 2. Generate changelog entry
+# Use included sample files to generate a changelog entry
 export CLAUDE_API_KEY="sk-ant-..."
-python3 test_action_cli.py generate --diff test.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 
-# Expected output: YAML changelog entry
+# Expected output: YAML changelog entry with:
+# - Title from PR description
+# - Type inferred from code changes
+# - Authors extracted from PR metadata
+# - Issues and references extracted from PR body
 ```
 
 ### Scenario 2: Test Custom Validation Rules
@@ -294,19 +306,16 @@ python3 test_action_cli.py validate \
 Test that issues and links are properly extracted:
 
 ```bash
-cat > pr_info.json << 'EOF'
-{
-  "body": "Fixes #123 and #456\nRelated to JIRA-789\nSee https://example.com/details"
-}
-EOF
-
 python3 test_action_cli.py extract \
-  --pr-info pr_info.json \
-  --diff changes.diff \
+  --pr-info examples/test-pr-info.json \
+  --diff examples/test-changes.diff \
   --external-issue-regex "JIRA-(\d+)" \
   --external-issue-url-template "https://jira.example.com/browse/JIRA-{id}"
 
-# Expected output: Extracted issues and URLs
+# Expected output:
+# PR Number: 42
+# GitHub Issues: [123, 456]
+# External trackers: JIRA-789
 ```
 
 ### Scenario 4: Test Legacy Format Handling
@@ -344,8 +353,8 @@ export CLAUDE_API_KEY="sk-ant-api03-..."
 Control logging verbosity:
 
 ```bash
-# More detailed output
-python3 test_action_cli.py generate --diff test.diff --verbose
+# More detailed output with included samples
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json --verbose
 
 # Change logging level (in code):
 # logging.getLogger().setLevel(logging.DEBUG)
@@ -359,12 +368,18 @@ python3 test_action_cli.py generate --diff test.diff --verbose
 
 ```bash
 export CLAUDE_API_KEY="sk-ant-..."
-python3 test_action_cli.py generate --diff test.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 ```
 
 ### "Failed to load file"
 
-**Solution:** Ensure file path is correct and readable:
+**Solution:** Ensure file path is correct and readable. Use the included samples:
+
+```bash
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
+```
+
+Or use absolute paths if creating custom files:
 
 ```bash
 python3 test_action_cli.py generate --diff /path/to/changes.diff
@@ -375,7 +390,7 @@ python3 test_action_cli.py generate --diff /path/to/changes.diff
 **Solution:** Enable verbose logging:
 
 ```bash
-python3 test_action_cli.py generate --diff test.diff --verbose
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json --verbose
 ```
 
 ### "Module not found"
@@ -389,7 +404,7 @@ python3 test_action_cli.py validate --sample "title: Test\ntype: added"
 
 ## Tips and Best Practices
 
-1. **Use real diffs:** Test with actual code changes from your project for realistic results
+1. **Start with included samples:** Use `examples/test-changes.diff` and `examples/test-pr-info.json` to get started quickly, then create your own based on these templates.
 
 2. **Test validation first:** Before testing generation, ensure your validation rules are correct:
    ```bash
@@ -398,17 +413,17 @@ python3 test_action_cli.py validate --sample "title: Test\ntype: added"
 
 3. **Test metadata extraction:** Verify issues and links are detected correctly:
    ```bash
-   python3 test_action_cli.py extract --diff changes.diff --pr-info pr.json
+   python3 test_action_cli.py extract --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
    ```
 
 4. **Check API response:** Use --verbose flag to see Claude's responses:
    ```bash
-   python3 test_action_cli.py generate --diff test.diff --verbose
+   python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json --verbose
    ```
 
 5. **Save successful outputs:** Keep examples of good changelog entries for reference:
    ```bash
-   python3 test_action_cli.py generate --diff test.diff > successful_entry.yml
+   python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json > successful_entry.yml
    ```
 
 ## Integration with Workflow Testing
