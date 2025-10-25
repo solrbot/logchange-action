@@ -131,11 +131,6 @@ inputs:
     required: false
     default: 'true'
 
-  comment-mode:
-    description: 'How to comment on PRs: "review-comment" (default, as suggested changes), "pr-comment" (regular PR comment)'
-    required: false
-    default: 'review-comment'
-
 outputs:
   changelog-found:
     description: 'Whether a changelog entry was found'

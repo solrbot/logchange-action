@@ -192,34 +192,6 @@ class GitHubClient:
             logger.error(f"Failed to comment on PR: {e}")
             return False
 
-    def create_review_comment(
-        self, commit_sha: str, file_path: str, position: int, body: str
-    ) -> bool:
-        """Create a review comment on a specific line (requires push access)"""
-        if not self.pr_number:
-            logger.warning("No PR number found")
-            return False
-
-        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/comments"
-
-        try:
-            response = self.session.post(
-                url,
-                json={
-                    "commit_id": commit_sha,
-                    "path": file_path,
-                    "position": position,
-                    "body": body,
-                },
-            )
-            response.raise_for_status()
-            logger.info("Successfully created review comment")
-            return True
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to create review comment: {e}")
-            return False
-
     def get_pr_title_and_body(self) -> tuple[str, str]:
         """Get PR title and body"""
         try:
@@ -285,71 +257,23 @@ class GitHubClient:
             # (better to post a duplicate than to skip a valid suggestion)
             return False
 
-    def has_existing_review_suggestion(self) -> bool:
-        """
-        Check if the action has already posted a changelog suggestion as a review on this PR.
-
-        Returns:
-            True if a review suggestion already exists, False otherwise
-        """
-        if not self.pr_number:
-            logger.warning("No PR number found")
-            return False
-
-        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
-
-        try:
-            # Get all reviews on the PR
-            page = 1
-            while True:
-                response = self.session.get(url, params={"page": page, "per_page": 100})
-                response.raise_for_status()
-
-                reviews = response.json()
-                if not reviews:
-                    break
-
-                # Check if any review contains changelog generation markers
-                for review in reviews:
-                    body = review.get("body", "")
-                    # Look for markers that indicate this is from our action
-                    if any(
-                        marker in body
-                        for marker in [
-                            "I've generated a changelog entry",
-                            "I've converted the legacy changelog entry",
-                            "changelog entry does not comply",
-                        ]
-                    ):
-                        logger.info(
-                            f"Found existing changelog suggestion in review {review.get('id')}"
-                        )
-                        return True
-
-                page += 1
-
-            logger.debug("No existing changelog suggestions found in reviews")
-            return False
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to check for existing reviews: {e}")
-            # If we can't check, assume there are no existing reviews
-            return False
-
-    def create_review_with_suggestion(
-        self, event: str, body: str, comments: List[Dict[str, Any]] = None
+    def create_review_comment_with_suggestion(
+        self,
+        commit_sha: str,
+        file_path: str,
+        line: int,
+        body: str,
+        suggestion: str = "",
     ) -> bool:
         """
-        Create a review on the PR (approval, request_changes, or comment).
-        Can include suggested changes for specific files.
+        Create a review comment on a specific line with optional suggested changes.
 
         Args:
-            event: "APPROVE", "REQUEST_CHANGES", or "COMMENT"
-            body: The review body/comment
-            comments: List of review comments with optional suggestions:
-                    [{"path": "file.txt", "line": 10, "body": "comment"}]
-                    For suggested changes: {"path": "...", "line": ..., "body": "...",
-                    "suggestion": "new content"}
+            commit_sha: The commit SHA where the comment should be posted
+            file_path: Path to the file in the PR
+            line: Line number (in the new version of the file)
+            body: The comment text
+            suggestion: Optional suggested replacement text (for "suggest edits" feature)
 
         Returns:
             True if successful, False otherwise
@@ -360,40 +284,31 @@ class GitHubClient:
 
         url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
 
-        payload = {
+        # Build the comment payload
+        comment_data = {
+            "path": file_path,
+            "line": line,
             "body": body,
-            "event": event,
         }
 
-        if comments:
-            payload["comments"] = comments
+        # If suggestion provided, add it in the format for suggested changes
+        if suggestion:
+            comment_data["suggestion"] = suggestion
+
+        payload = {
+            "body": "Review with suggested changes",
+            "event": "COMMENT",
+            "comments": [comment_data],
+        }
 
         try:
             response = self.session.post(url, json=payload)
             response.raise_for_status()
-            logger.info(f"Successfully created review (event: {event})")
+            logger.info(
+                f"Successfully created review comment with suggestion on line {line}"
+            )
             return True
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to create review: {e}")
+            logger.error(f"Failed to create review comment: {e}")
             return False
-
-    def comment_or_review(self, body: str, mode: str = "review-comment") -> bool:
-        """
-        Post a comment on PR using the specified mode.
-
-        Args:
-            body: The comment body
-            mode: "review-comment" for review comment, "pr-comment" for regular comment
-
-        Returns:
-            True if successful
-        """
-        if mode == "review-comment":
-            # Create a review with the body as a general review comment
-            return self.create_review_with_suggestion(
-                event="COMMENT", body=body, comments=None
-            )
-        else:
-            # Regular PR comment
-            return self.comment_on_pr(body)

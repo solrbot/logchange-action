@@ -90,6 +90,59 @@ class LegacyChangelogHandler:
 
         return None
 
+    def extract_added_lines_with_positions(
+        self, diff_content: str, legacy_file: str
+    ) -> List[Tuple[int, str]]:
+        """
+        Extract changelog lines from diff with their line numbers for suggested edits.
+
+        Args:
+            diff_content: The diff output for the changelog file
+            legacy_file: The legacy file path (for matching the diff)
+
+        Returns:
+            List of tuples (line_number, line_content) for added lines in the new version
+        """
+        lines = diff_content.split("\n")
+        added_lines_with_pos = []
+        current_new_line = 0
+        in_hunk = False
+
+        for line in lines:
+            # Skip lines until we find the hunk header
+            if line.startswith("@@"):
+                # Parse hunk header: @@ -old_start,old_count +new_start,new_count @@
+                try:
+                    parts = line.split(" ")
+                    new_range = parts[2]  # +new_start,new_count
+                    new_start = int(new_range.split(",")[0].lstrip("+"))
+                    current_new_line = new_start
+                except (IndexError, ValueError):
+                    pass
+                in_hunk = True
+                continue
+
+            if not in_hunk:
+                continue
+
+            # Process lines in hunk
+            if line.startswith("@@"):
+                # New hunk, reset
+                continue
+            elif line.startswith("-"):
+                # Removed line - don't increment new line counter
+                pass
+            elif line.startswith("+") and not line.startswith("+++"):
+                # Added line - record it with position
+                content = line[1:]  # Remove '+' prefix
+                added_lines_with_pos.append((current_new_line, content))
+                current_new_line += 1
+            elif not line.startswith("\\"):
+                # Context line (unchanged) - increment counter
+                current_new_line += 1
+
+        return added_lines_with_pos
+
     def detect_entry_type(self, entry_text: str) -> str:
         """
         Detect what type of changelog entry this is

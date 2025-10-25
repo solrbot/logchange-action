@@ -71,12 +71,6 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 | `github-issue-detection` | `true` | Detect GitHub issue references (#123) in PR description |
 | `issue-tracker-url-detection` | `true` | Detect issue tracker URLs via LLM filtering (only configured trackers added as links) |
 
-### Feedback & Comments
-
-| Input | Default | Description |
-|-------|---------|-------------|
-| `comment-mode` | `review-comment` | How to post comments: `review-comment` (PR review with 1-click approval) or `pr-comment` (regular PR comment) |
-
 ### Advanced
 
 | Input | Default | Description |
@@ -151,43 +145,6 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
     claude-token: ${{ secrets.CLAUDE_API_KEY }}
     github-issue-detection: false
 ```
-
-**Use regular PR comments instead of review comments:**
-```yaml
-- uses: solrbot/logchange-action@v1
-  with:
-    on-missing-entry: generate
-    claude-token: ${{ secrets.CLAUDE_API_KEY }}
-    comment-mode: pr-comment
-```
-
-## Comment Modes
-
-The action can provide feedback to PRs in two ways.
-
-### Review Comments (Default: `review-comment`)
-
-When `comment-mode: review-comment` (default), the action creates a **GitHub PR review** with its suggestions. This mode:
-- ✅ Allows reviewers to **approve** the suggestion with one click
-- ✅ Groups all feedback in a single review thread
-- ✅ Makes it easy for contributors to accept changes
-- ✅ Professional appearance with GitHub's native review UI
-
-**Ideal for:**
-- Auto-generated changelog entries (users can approve directly)
-- Automated suggestions that are usually correct
-- Teams wanting streamlined PR workflows
-
-### Regular PR Comments (Legacy: `pr-comment`)
-
-When `comment-mode: pr-comment`, the action posts a **regular PR comment**. This mode:
-- Posts comments directly to the PR
-- Useful if your workflow prefers traditional comments
-- Less intrusive for some workflows
-
-**Ideal for:**
-- Teams preferring traditional comment-based feedback
-- Custom integrations with comment-based tools
 
 ## Changelog File Naming
 
@@ -287,12 +244,16 @@ Use the included testing CLI tool to validate the action locally without running
 # Test changelog validation
 python3 test_action_cli.py validate --sample "title: Test\ntype: added"
 
-# Test changelog generation (requires Claude API key)
+# Test changelog generation with provided samples (requires Claude API key)
 export CLAUDE_API_KEY="sk-ant-..."
-python3 test_action_cli.py generate --diff changes.diff
+python3 test_action_cli.py generate --diff examples/test-changes.diff --pr-info examples/test-pr-info.json
 
-# See LOCAL_TESTING.md for comprehensive examples
+# See LOCAL_TESTING.md for comprehensive examples and how to create custom test files
 ```
+
+Sample test files are included in `examples/`:
+- `test-changes.diff` - Real-world code changes (authentication feature)
+- `test-pr-info.json` - Sample PR data with GitHub issues and external tracker references
 
 ## Credits
 

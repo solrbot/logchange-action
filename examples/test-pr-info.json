@@ -1,0 +1,12 @@
+{
+  "number": 42,
+  "title": "Add OAuth2 authentication support",
+  "body": "This PR adds OAuth2 authentication support to the API.\n\n## Summary\nImplements OAuth2 bearer token authentication for secure API access.\n\n## Changes\n- New `auth.py` module with authentication logic\n- New `/api/v1/user` endpoint to get current user info\n- Integration with Flask request headers for token validation\n\n## Fixes\n- Fixes #123 (Security: Add OAuth2 support)\n- Closes #456 (Feature request: Authentication)\nRelated to JIRA-789\n\n## Testing\nAdded comprehensive tests in `tests/test_auth.py`\n\ncc @reviewer",
+  "user": {
+    "login": "developer-name",
+    "html_url": "https://github.com/developer-name"
+  },
+  "head": {
+    "sha": "abc123def456"
+  }
+}
