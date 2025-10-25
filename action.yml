@@ -149,7 +149,7 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://python:3.11-slim'
+  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
   entrypoint: '/action/src/entrypoint.sh'
 
 branding:

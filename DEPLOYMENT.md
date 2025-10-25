@@ -5,8 +5,9 @@ This guide explains how to deploy the Logchange Action to GitHub.
 ## Prerequisites
 
 1. GitHub account with owner permissions for the organization/user (we use `solrbot` as example)
-2. Docker Hub account (for publishing Docker image) - optional but recommended
-3. Git installed locally
+2. Docker installed locally (for building and pushing Docker images)
+3. GitHub Personal Access Token with `write:packages` scope (for GHCR authentication)
+4. Git installed locally
 
 ## Step 1: Publish to GitHub
 
@@ -44,32 +45,36 @@ This guide explains how to deploy the Logchange Action to GitHub.
      ```
    - Publish release
 
-## Step 2: Set Up Docker Image (Optional)
-
-### Push to Docker Hub
+## Step 2: Build and Push Docker Image to GHCR
 
 1. **Build the Docker image**:
    ```bash
-   docker build -t logchange-action:latest .
-   docker tag logchange-action:latest docker.io/solrbot/logchange-action:latest
-   docker tag logchange-action:latest docker.io/solrbot/logchange-action:v1.0.0
+   docker build -t ghcr.io/solrbot/logchange-action:latest .
+   docker tag ghcr.io/solrbot/logchange-action:latest ghcr.io/solrbot/logchange-action:v1.0.0
    ```
 
-2. **Push to Docker Hub**:
+2. **Authenticate with GitHub Container Registry**:
    ```bash
-   docker login
-   docker push docker.io/solrbot/logchange-action:latest
-   docker push docker.io/solrbot/logchange-action:v1.0.0
+   # Create a GitHub personal access token with 'write:packages' scope
+   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
    ```
 
-### Update action.yml for Docker Hub
+3. **Push to GHCR**:
+   ```bash
+   docker push ghcr.io/solrbot/logchange-action:latest
+   docker push ghcr.io/solrbot/logchange-action:v1.0.0
+   ```
 
-If using Docker Hub, update `action.yml`:
+### Note on action.yml
+
+The `action.yml` file is already configured to use the GHCR image:
 ```yaml
 runs:
   using: 'docker'
-  image: 'docker://solrbot/logchange-action:v1.0.0'
+  image: 'docker://ghcr.io/solrbot/logchange-action:latest'
 ```
+
+For version-specific releases, update the image reference to point to the specific version tag (e.g., `v1.0.0`).
 
 ## Step 3: Testing the Action
 
@@ -128,12 +133,24 @@ For each release:
    ```
 
 3. **Create GitHub Release** with changelog
-4. **Update Docker images**:
+
+4. **Build and push Docker images to GHCR**:
    ```bash
-   docker build -t solrbot/logchange-action:v1.1.0 .
-   docker push solrbot/logchange-action:v1.1.0
-   docker tag solrbot/logchange-action:v1.1.0 solrbot/logchange-action:latest
-   docker push solrbot/logchange-action:latest
+   docker build -t ghcr.io/solrbot/logchange-action:v1.1.0 .
+   docker tag ghcr.io/solrbot/logchange-action:v1.1.0 ghcr.io/solrbot/logchange-action:latest
+
+   # Authenticate with GHCR (if not already logged in)
+   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+
+   # Push both version-specific and latest tags
+   docker push ghcr.io/solrbot/logchange-action:v1.1.0
+   docker push ghcr.io/solrbot/logchange-action:latest
+   ```
+
+5. **Update action.yml for version-specific releases** (optional):
+   ```bash
+   # Edit action.yml to reference the new version
+   # image: 'docker://ghcr.io/solrbot/logchange-action:v1.1.0'
    ```
 
 ## Step 5: Update Action.yml for Release
