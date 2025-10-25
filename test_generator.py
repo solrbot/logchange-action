@@ -41,7 +41,6 @@ import json
 import logging
 import os
 import sys
-from pathlib import Path
 
 sys.path.insert(0, "action/src")
 

@@ -66,7 +66,12 @@ class LogchangeAction:
         underscored = "INPUT_" + input_name.upper().replace("-", "_")
         hyphenated = "INPUT_" + input_name.upper()
 
-        return os.getenv(underscored) or os.getenv(hyphenated) or default
+        value = os.getenv(underscored) or os.getenv(hyphenated) or default
+        logger.debug(
+            f"_get_input({input_name}): underscore={underscored}={os.getenv(underscored)}, "
+            f"hyphen={hyphenated}={os.getenv(hyphenated)}, result={value}"
+        )
+        return value
 
     def __init__(self):
         """Initialize the action with environment variables"""
@@ -76,9 +81,7 @@ class LogchangeAction:
         self.github_api_url = os.getenv("GITHUB_API_URL", "https://api.github.com")
 
         # Action inputs
-        self.changelog_path = self._get_input(
-            "changelog-path", "changelog/unreleased"
-        )
+        self.changelog_path = self._get_input("changelog-path", "changelog/unreleased")
         self.on_missing_entry = self._get_input("on-missing-entry", "fail").lower()
         self.missing_entry_message = self._get_input(
             "missing-entry-message",
