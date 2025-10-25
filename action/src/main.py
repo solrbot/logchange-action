@@ -569,7 +569,11 @@ Here's the suggested entry for `{file_path}`:
             # Create custom prompt for conversion
             pr_info = self.github_event.get("pull_request", {})
             conversion_prompt = self.legacy_handler.create_conversion_prompt(
-                entry_text, pr_info, context
+                entry_text,
+                pr_info,
+                context,
+                changelog_types=self.changelog_types,
+                forbidden_fields=self.forbidden_fields,
             )
 
             # Generate logchange entry from legacy entry
