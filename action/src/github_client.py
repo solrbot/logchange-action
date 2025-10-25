@@ -229,6 +229,113 @@ class GitHubClient:
             logger.error(f"Failed to get PR info: {e}")
             return "", ""
 
+    def has_existing_changelog_suggestion(self) -> bool:
+        """
+        Check if the action has already posted a changelog suggestion on this PR.
+        Looks for comments containing changelog generation suggestions.
+
+        Returns:
+            True if a suggestion already exists, False otherwise
+        """
+        if not self.pr_number:
+            logger.warning("No PR number found")
+            return False
+
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/issues/{self.pr_number}/comments"
+
+        try:
+            # Get all comments on the PR
+            page = 1
+            while True:
+                response = self.session.get(url, params={"page": page, "per_page": 100})
+                response.raise_for_status()
+
+                comments = response.json()
+                if not comments:
+                    break
+
+                # Check if any comment contains changelog generation markers
+                for comment in comments:
+                    body = comment.get("body", "")
+                    # Look for markers that indicate this is from our action
+                    if any(
+                        marker in body
+                        for marker in [
+                            "I've generated a changelog entry",
+                            "I've converted the legacy changelog entry",
+                            "Found changes to",
+                            "changelog entry does not comply",
+                            "No changelog entry found",
+                            "Legacy changelog entry found",
+                        ]
+                    ):
+                        logger.info(
+                            f"Found existing changelog suggestion in comment {comment.get('id')}"
+                        )
+                        return True
+
+                page += 1
+
+            logger.debug("No existing changelog suggestions found on PR")
+            return False
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to check for existing comments: {e}")
+            # If we can't check, assume there are no existing comments
+            # (better to post a duplicate than to skip a valid suggestion)
+            return False
+
+    def has_existing_review_suggestion(self) -> bool:
+        """
+        Check if the action has already posted a changelog suggestion as a review on this PR.
+
+        Returns:
+            True if a review suggestion already exists, False otherwise
+        """
+        if not self.pr_number:
+            logger.warning("No PR number found")
+            return False
+
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
+
+        try:
+            # Get all reviews on the PR
+            page = 1
+            while True:
+                response = self.session.get(url, params={"page": page, "per_page": 100})
+                response.raise_for_status()
+
+                reviews = response.json()
+                if not reviews:
+                    break
+
+                # Check if any review contains changelog generation markers
+                for review in reviews:
+                    body = review.get("body", "")
+                    # Look for markers that indicate this is from our action
+                    if any(
+                        marker in body
+                        for marker in [
+                            "I've generated a changelog entry",
+                            "I've converted the legacy changelog entry",
+                            "changelog entry does not comply",
+                        ]
+                    ):
+                        logger.info(
+                            f"Found existing changelog suggestion in review {review.get('id')}"
+                        )
+                        return True
+
+                page += 1
+
+            logger.debug("No existing changelog suggestions found in reviews")
+            return False
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to check for existing reviews: {e}")
+            # If we can't check, assume there are no existing reviews
+            return False
+
     def create_review_with_suggestion(
         self, event: str, body: str, comments: List[Dict[str, Any]] = None
     ) -> bool:

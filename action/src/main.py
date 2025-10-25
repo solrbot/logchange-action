@@ -287,6 +287,19 @@ class LogchangeAction:
 
         return is_pr_event
 
+    def _has_existing_suggestion(self) -> bool:
+        """
+        Check if the action has already posted a changelog suggestion on this PR.
+        This prevents duplicate suggestions when the PR is updated with new commits.
+
+        Returns:
+            True if a suggestion already exists, False otherwise
+        """
+        if self.comment_mode == "review-comment":
+            return self.github_client.has_existing_review_suggestion()
+        else:
+            return self.github_client.has_existing_changelog_suggestion()
+
     def _should_skip_changelog(self, pr_files: List[str]) -> bool:
         """Check if all files match skip pattern"""
         if not self.skip_files_regex:
@@ -417,6 +430,15 @@ class LogchangeAction:
                         "generation-error", "Could not generate valid entry"
                     )
                     return 1
+
+                # Check if we've already posted a suggestion on this PR
+                if self._has_existing_suggestion():
+                    logger.info(
+                        "Changelog suggestion already exists on this PR, skipping"
+                    )
+                    self.set_output("changelog-found", "false")
+                    self.set_output("changelog-generated", "false")
+                    return 0
 
                 # Post as suggestion
                 suggestion_comment = self._format_suggestion_comment(generated_entry)
@@ -588,6 +610,14 @@ Or let me know if you'd like me to adjust anything!
                 )
                 self.set_output("generation-error", "Failed to convert legacy entry")
                 return 1
+
+            # Check if we've already posted a conversion suggestion on this PR
+            if self._has_existing_suggestion():
+                logger.info(
+                    "Changelog suggestion already exists on this PR, skipping legacy conversion"
+                )
+                self.set_output("legacy-converted", "false")
+                return 0
 
             # Post the converted entry as a suggestion
             suggestion_comment = self._format_legacy_conversion_comment(

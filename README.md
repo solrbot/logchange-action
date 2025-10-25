@@ -163,7 +163,7 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 
 ## Comment Modes
 
-The action can provide feedback to PRs in two ways:
+The action can provide feedback to PRs in two ways.
 
 ### Review Comments (Default: `review-comment`)
 
