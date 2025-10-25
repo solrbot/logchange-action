@@ -376,17 +376,13 @@ class LogchangeAction:
 
         if self.on_missing_entry == "fail":
             logger.error(self.missing_entry_message)
-            self.github_client.comment_on_pr(
-                f"❌ {self.missing_entry_message}"
-            )
+            self.github_client.comment_on_pr(f"❌ {self.missing_entry_message}")
             self.set_output("changelog-found", "false")
             return 1
 
         elif self.on_missing_entry == "warn":
             logger.warning(self.missing_entry_message)
-            self.github_client.comment_on_pr(
-                f"⚠️ {self.missing_entry_message}"
-            )
+            self.github_client.comment_on_pr(f"⚠️ {self.missing_entry_message}")
             self.set_output("changelog-found", "false")
             return 0
 
@@ -431,9 +427,7 @@ class LogchangeAction:
 
                 # Post as suggestion
                 suggestion_comment = self._format_suggestion_comment(generated_entry)
-                self.github_client.comment_on_pr(
-                    suggestion_comment
-                )
+                self.github_client.comment_on_pr(suggestion_comment)
 
                 self.set_output("changelog-found", "false")
                 self.set_output("changelog-generated", "true")
@@ -443,9 +437,7 @@ class LogchangeAction:
             except Exception as e:
                 logger.error(f"Generation failed: {e}", exc_info=True)
                 error_msg = f"Changelog generation failed: {str(e)}"
-                self.github_client.comment_on_pr(
-                    f"❌ {error_msg}"
-                )
+                self.github_client.comment_on_pr(f"❌ {error_msg}")
                 self.set_output("generation-error", str(e))
                 return 1
 
@@ -486,15 +478,11 @@ Here's the suggested entry for `{file_path}`:
         )
 
         if self.on_legacy_and_logchange == "fail":
-            self.github_client.comment_on_pr(
-                f"❌ {self.legacy_conflict_message}"
-            )
+            self.github_client.comment_on_pr(f"❌ {self.legacy_conflict_message}")
             self.set_output("legacy-conflict", "true")
             return 1
         elif self.on_legacy_and_logchange == "warn":
-            self.github_client.comment_on_pr(
-                f"⚠️ {self.legacy_conflict_message}"
-            )
+            self.github_client.comment_on_pr(f"⚠️ {self.legacy_conflict_message}")
             self.set_output("legacy-conflict", "true")
             # Continue to validate the logchange entries
             return self._handle_existing_changelog(changelog_files)
@@ -512,16 +500,12 @@ Here's the suggested entry for `{file_path}`:
 
         if self.on_legacy_entry == "warn":
             logger.warning("Legacy changelog entry found, warning as configured")
-            self.github_client.comment_on_pr(
-                f"⚠️ {self.legacy_entry_message}"
-            )
+            self.github_client.comment_on_pr(f"⚠️ {self.legacy_entry_message}")
             return 0
 
         elif self.on_legacy_entry == "fail":
             logger.error("Legacy changelog entry found, failing as configured")
-            self.github_client.comment_on_pr(
-                f"❌ {self.legacy_entry_message}"
-            )
+            self.github_client.comment_on_pr(f"❌ {self.legacy_entry_message}")
             return 1
 
         elif self.on_legacy_entry == "convert":
@@ -606,9 +590,7 @@ Here's the suggested entry for `{file_path}`:
             suggestion_comment = self._format_legacy_conversion_comment(
                 generated_entry, legacy_file
             )
-            self.github_client.comment_on_pr(
-                suggestion_comment
-            )
+            self.github_client.comment_on_pr(suggestion_comment)
 
             self.set_output("legacy-converted", "true")
             logger.info("Legacy changelog successfully converted to logchange format")
@@ -617,9 +599,7 @@ Here's the suggested entry for `{file_path}`:
         except Exception as e:
             logger.error(f"Legacy conversion failed: {e}", exc_info=True)
             error_msg = f"Legacy changelog conversion failed: {str(e)}"
-            self.github_client.comment_on_pr(
-                f"❌ {error_msg}"
-            )
+            self.github_client.comment_on_pr(f"❌ {error_msg}")
             self.set_output("generation-error", str(e))
             return 1
 

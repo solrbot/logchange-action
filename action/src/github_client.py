@@ -256,4 +256,3 @@ class GitHubClient:
             # If we can't check, assume there are no existing comments
             # (better to post a duplicate than to skip a valid suggestion)
             return False
-
