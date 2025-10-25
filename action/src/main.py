@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import requests
 import sys
 from typing import Any, Dict, List
 
@@ -79,6 +80,21 @@ class LogchangeAction:
         self.github_event = self._load_github_event()
         self.github_token = os.getenv("GITHUB_TOKEN")
         self.github_api_url = os.getenv("GITHUB_API_URL", "https://api.github.com")
+
+        # BEGIN DEBUG Check token permissions
+        headers = {'Authorization': f'token {self.github_token}'}
+        response = requests.get(f'{self.github_api_url}/user', headers=headers)
+        
+        if response.status_code == 200:
+            print(f"Token user: {response.json()['login']}")
+            print(f"Token headers: {response.headers}")
+            # GitHub returns X-OAuth-Scopes header
+            scopes = response.headers.get('X-OAuth-Scopes', 'Not available')
+            print(f"Token scopes: {scopes}")
+        else:
+            print(f"Failed to validate token: {response.status_code}")
+            print(f"Response: {response.text}")
+        # END DEBUG Check token permissions
 
         # Action inputs
         self.changelog_path = self._get_input("changelog-path", "changelog/unreleased")
