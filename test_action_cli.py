@@ -307,18 +307,26 @@ authors:
         logger.info("TESTING LEGACY CHANGELOG")
         logger.info("=" * 80)
 
-        # Check if entry is legacy format
-        is_legacy = handler.is_legacy_format(entry)
+        # Detect entry type
+        entry_type = handler.detect_entry_type(entry)
 
         print("\n" + "=" * 80)
         print("LEGACY FORMAT DETECTION:")
         print("=" * 80)
-        if is_legacy:
-            logger.info("✅ Entry is in legacy format")
-            print("Format: LEGACY (not logchange)")
+
+        if entry_type == "markdown":
+            logger.info("✅ Entry is in Markdown legacy format")
+            print(f"Format: {entry_type.upper()} (legacy)")
+        elif entry_type == "plain_text":
+            logger.info("✅ Entry is in plain text legacy format")
+            print(f"Format: {entry_type.upper()} (legacy)")
+        elif entry_type == "unreleased":
+            logger.info("Entry contains 'Unreleased' section")
+            print(f"Format: {entry_type.upper()}")
         else:
-            logger.info("Entry is not in legacy format")
-            print("Format: LOGCHANGE or other")
+            logger.info("Entry type: other")
+            print(f"Format: {entry_type.upper()}")
+
         print("=" * 80)
 
         return 0
