@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Support for developers who refuse to write changelog entries (tough love) (#298) (Nina Gupta)
 - Legacy "I forgot the changelog" excuse handling (#445) (Raj Patel)
+- Irrelevant multi-line entry that just discusses elephants and other completely
+  unrelated topics to the actual change in the PR. Let's see how Claude handles
+  this then (#111) (Jon Blow, Jane Snow)
 
 ### Security
 - Added detection for when developers try to hide breaking changes in the changelog (#567) (Lisa Wong)
