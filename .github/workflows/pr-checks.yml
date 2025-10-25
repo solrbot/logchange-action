@@ -1,0 +1,103 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r action/src/requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Verify Python syntax
+        run: |
+          python3 -m py_compile action/src/*.py
+          python3 -m py_compile test_generator.py
+          python3 -m py_compile tests/*.py
+
+      - name: Run unit tests
+        run: |
+          python3 -m pytest tests/ -v --tb=short
+
+      - name: Generate coverage report
+        run: |
+          python3 -m pytest tests/ --cov=action/src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install linting tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black isort
+
+      - name: Check code formatting with black
+        run: |
+          black --check action/src/ tests/ test_generator.py
+
+      - name: Check import sorting with isort
+        run: |
+          isort --check-only action/src/ tests/ test_generator.py
+
+      - name: Lint with flake8
+        run: |
+          flake8 action/src/ tests/ test_generator.py \
+            --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 action/src/ tests/ test_generator.py \
+            --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: logchange-action:pr-check
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
