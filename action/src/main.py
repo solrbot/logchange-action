@@ -203,6 +203,19 @@ class LogchangeAction:
 
             logger.info("Starting logchange action")
 
+            # Early exit: if generation is enabled, check for existing suggestion before
+            # doing expensive file operations
+            if (
+                self.on_missing_entry == "generate"
+                and self._has_existing_suggestion()
+            ):
+                logger.info(
+                    "Changelog suggestion already exists on this PR, skipping all operations"
+                )
+                self.set_output("changelog-found", "false")
+                self.set_output("changelog-generated", "false")
+                return 0
+
             # Get PR files
             pr_files = self.github_client.get_pr_files()
             logger.info(f"Found {len(pr_files)} files in PR")
@@ -380,7 +393,6 @@ class LogchangeAction:
         - Calling generate_with_validation
         - Checking for generation failures
         - Checking for validation failures
-        - Checking for duplicate suggestions
         - Posting error comments
         - Setting error outputs
 
@@ -434,11 +446,6 @@ class LogchangeAction:
                     "No worries! Please try again with your next commit."
                 )
                 self.set_output("generation-error", "Validation failed")
-                return None
-
-            # Check for duplicate suggestion
-            if self._has_existing_suggestion():
-                logger.info(f"{context_name} suggestion already exists, skipping")
                 return None
 
             logger.info(f"{context_name} generated and validated successfully")
