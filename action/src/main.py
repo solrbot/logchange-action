@@ -293,9 +293,14 @@ class LogchangeAction:
     def _is_pr_workflow(self) -> bool:
         """Check if running in a PR workflow"""
         event_name = os.getenv("GITHUB_EVENT_NAME", "")
-        return event_name == "pull_request" and bool(
+        is_pr_event = event_name in ["pull_request", "pull_request_target"] and bool(
             self.github_event.get("pull_request")
         )
+
+        if is_pr_event:
+            logger.info(f"Running on {event_name} event")
+
+        return is_pr_event
 
     def _should_skip_changelog(self, pr_files: List[str]) -> bool:
         """Check if all files match skip pattern"""
