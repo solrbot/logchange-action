@@ -268,7 +268,7 @@ class GitHubClient:
     ) -> bool:
         """
         Create a review comment on a specific line with optional suggested changes.
-        Supports multi-line suggestions.
+        Supports multi-line comments.
 
         Args:
             commit_sha: The commit SHA where the comment should be posted
@@ -286,27 +286,24 @@ class GitHubClient:
             logger.warning("No PR number found")
             return False
 
-        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/reviews"
+        url = f"{self.api_url}/repos/{self.repo_owner}/{self.repo_name}/pulls/{self.pr_number}/comments"
 
         # Build the comment payload
         comment_data = {
+            "body": body,
+            "commit_id": commit_sha,
             "path": file_path,
             "line": line,
-            "body": body,
+            "side": "RIGHT",  # Comment on the new version of the file
         }
 
-        # Add start_line for multi-line comments
+        # Add start_line and start_side for multi-line comments
         if start_line is not None:
             comment_data["start_line"] = start_line
-
-        payload = {
-            "body": "Review with suggested changes",
-            "event": "COMMENT",
-            "comments": [comment_data],
-        }
+            comment_data["start_side"] = "RIGHT"
 
         try:
-            response = self.session.post(url, json=payload)
+            response = self.session.post(url, json=comment_data)
             response.raise_for_status()
             logger.info(
                 f"Successfully created review comment with suggestion on line {line}"
@@ -315,7 +312,7 @@ class GitHubClient:
 
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to create review comment: {e}")
-            # Log response content for debugging 422 errors
+            # Log response content for debugging errors
             if hasattr(e.response, 'text'):
                 logger.debug(f"GitHub API response: {e.response.text}")
             return False
