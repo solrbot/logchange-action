@@ -53,19 +53,19 @@ class ActionConfig:
         self.optional_fields = self._parse_list_input("optional-fields", "")
 
         # Legacy changelog configuration (enabled by default with CHANGELOG.md)
-        self.legacy_changelog_paths = self._parse_list_input(
+        self.managed_changelog_paths = self._parse_list_input(
             "legacy-changelog-paths", "CHANGELOG.md"
         )
-        self.on_legacy_entry = self._get_input("on-legacy-entry", "convert").lower()
-        self.on_legacy_and_logchange = self._get_input(
+        self.on_managed_entry = self._get_input("on-legacy-entry", "convert").lower()
+        self.on_managed_and_logchange = self._get_input(
             "on-legacy-and-logchange", "warn"
         ).lower()
-        self.legacy_entry_message = self._get_input(
+        self.managed_entry_message = self._get_input(
             "legacy-entry-message",
             "I detected a legacy changelog entry. Converting it to logchange format...",
         )
-        self.legacy_conflict_message = self._get_input(
-            "legacy-conflict-message",
+        self.managed_conflict_message = self._get_input(
+            "managed-conflict-message",
             "This PR contains both legacy and logchange changelog entries. Please use only logchange format.",
         )
 
@@ -173,16 +173,16 @@ class ActionConfig:
             )
 
         # Validate on_legacy_entry mode
-        if self.on_legacy_entry not in ("convert", "warn", "fail", "remove"):
+        if self.on_managed_entry not in ("convert", "warn", "fail", "remove"):
             raise ConfigurationError(
-                f"Invalid on-legacy-entry mode: {self.on_legacy_entry}. "
+                f"Invalid on-legacy-entry mode: {self.on_managed_entry}. "
                 "Must be one of: fail, warn, remove, convert"
             )
 
         # Validate on_legacy_and_logchange mode
-        if self.on_legacy_and_logchange not in ("fail", "warn", "ignore"):
+        if self.on_managed_and_logchange not in ("fail", "warn", "ignore"):
             raise ConfigurationError(
-                f"Invalid on-legacy-and-logchange mode: {self.on_legacy_and_logchange}. "
+                f"Invalid on-legacy-and-logchange mode: {self.on_managed_and_logchange}. "
                 "Must be one of: fail, warn, ignore"
             )
 
@@ -230,7 +230,7 @@ class ActionConfig:
             f"Validation types: {', '.join(self.changelog_types)}",
             f"Mandatory fields: {', '.join(self.mandatory_fields)}",
             f"Forbidden fields: {', '.join(self.forbidden_fields) if self.forbidden_fields else '(none)'}",
-            f"Legacy support: {len(self.legacy_changelog_paths)} paths configured",
+            f"Legacy support: {len(self.managed_changelog_paths)} paths configured",
             f"Dry-run mode: {'enabled' if self.dry_run else 'disabled'}",
             "=" * 40,
         ]

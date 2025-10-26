@@ -86,15 +86,15 @@ draft: true
 
     def test_workflow_legacy_changelog_detection(self):
         """Test detection of legacy changelog format"""
-        from legacy_changelog_handler import LegacyChangelogHandler
+        from managed_changelog_handler import ManagedChangelogHandler
 
-        handler = LegacyChangelogHandler(
-            legacy_changelog_paths=["CHANGELOG.md", "HISTORY.txt"]
+        handler = ManagedChangelogHandler(
+            managed_changelog_paths=["CHANGELOG.md", "HISTORY.txt"]
         )
 
         # Test legacy paths are configured
-        assert "CHANGELOG.md" in handler.legacy_changelog_paths
-        assert "HISTORY.txt" in handler.legacy_changelog_paths
+        assert "CHANGELOG.md" in handler.managed_changelog_paths
+        assert "HISTORY.txt" in handler.managed_changelog_paths
 
     def test_pr_metadata_extraction_workflow(self):
         """Test PR metadata extraction in workflow"""
