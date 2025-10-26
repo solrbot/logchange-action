@@ -52,9 +52,9 @@ class ActionConfig:
         self.forbidden_fields = self._parse_list_input("forbidden-fields", "")
         self.optional_fields = self._parse_list_input("optional-fields", "")
 
-        # Legacy changelog configuration (disabled by default)
+        # Legacy changelog configuration (enabled by default with CHANGELOG.md)
         self.legacy_changelog_paths = self._parse_list_input(
-            "legacy-changelog-paths", ""
+            "legacy-changelog-paths", "CHANGELOG.md"
         )
         self.on_legacy_entry = self._get_input("on-legacy-entry", "convert").lower()
         self.on_legacy_and_logchange = self._get_input(

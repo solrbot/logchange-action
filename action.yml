@@ -82,9 +82,9 @@ inputs:
     default: ''
 
   legacy-changelog-paths:
-    description: 'Comma-separated list of legacy changelog file paths to detect (e.g., CHANGELOG.md,HISTORY.txt). DISABLED by default (empty string). Set to enable legacy changelog detection and conversion.'
+    description: 'Comma-separated list of legacy changelog file paths to detect (e.g., CHANGELOG.md,HISTORY.txt). Defaults to CHANGELOG.md. Set to empty string to disable legacy changelog detection.'
     required: false
-    default: ''
+    default: 'CHANGELOG.md'
 
   on-legacy-entry:
     description: 'Action when legacy changelog entry found without logchange entry: "convert", "warn", or "fail"'

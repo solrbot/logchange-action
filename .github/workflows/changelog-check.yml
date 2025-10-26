@@ -30,4 +30,3 @@ jobs:
           on-missing-entry: generate
           claude-token: ${{ secrets.CLAUDE_API_KEY }}
           skip-files-regex: '^(README\.md|docs/|\.github/)'
-          legacy-changelog-paths: CHANGELOG.md,HISTORY.txt
