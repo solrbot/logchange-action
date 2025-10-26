@@ -687,8 +687,7 @@ Here's the suggested entry for `{file_path}`:
                             body=suggestion_body,
                         )
                     else:
-                        # For multi-line removals, post a regular comment on the last line
-                        # (GitHub's multi-line suggestion API has limitations)
+                        # For multi-line removals, post a comment with line range
                         suggestion_body = (
                             f"Lines {start_line}-{end_line}: This was converted to logchange format. "
                             "Please remove these lines."
@@ -696,6 +695,7 @@ Here's the suggested entry for `{file_path}`:
                         self.github_client.create_review_comment_with_suggestion(
                             commit_sha=commit_sha,
                             file_path=legacy_file,
+                            start_line=start_line,
                             line=end_line,
                             body=suggestion_body,
                         )
