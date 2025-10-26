@@ -32,9 +32,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PR comment bot that aggressively reminds you to update CHANGELOG.md (#178) (Michael Zhang)
 - Changelog formatter that converts "fixed shit" into "resolved critical infrastructure issue" (#356) (Riley Cross)
 - GitHub Actions integration that blocks your PR until changelog is perfect (#489) (Dana Torres)
-- Irrelevant multi-line entry that just discusses elephants and other completely
-  unrelated topics to the actual change in the PR. Let's see how Claude handles
-  this then (#111) (Jon Blow, Jane Snow)
 
 ### Changed
 - Complete rewrite of changelog parser to handle developers' stream-of-consciousness commit messages (#612) (Kevin O'Connor)
@@ -44,11 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Support for developers who refuse to write changelog entries (tough love) (#298) (Nina Gupta)
 - Legacy "I forgot the changelog" excuse handling (#445) (Raj Patel)
-- Irrelevant multi-line entry that just discusses elephants and other completely
-  unrelated topics to the actual change in the PR. Let's see how Claude handles
-  this then (#111) (Jon Blow, Jane Snow)
-
 
 ### Security
 - Added detection for when developers try to hide breaking changes in the changelog (#567) (Lisa Wong)
 - Implemented strict enforcement that prevents lying in your changelog entries (#391) (Oscar Hernandez)
+- Lorem ipsum dolor
+  this should be suggested removed
+  even if it's many lines (#111) (Jon Blow, Jane Snow)
