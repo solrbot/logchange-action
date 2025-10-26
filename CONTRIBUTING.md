@@ -127,7 +127,7 @@ docker run -e GITHUB_EVENT_NAME=pull_request logchange-action:test
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for information about:
+See [DEPLOYMENT.md](DEPLOYMENT.md#security-considerations) for information about:
 - How this action handles fork pull requests securely
 - Why we use `pull_request_target` event
 - Security safeguards in place
