@@ -289,6 +289,7 @@ class LegacyChangelogHandler:
             The user prompt for Claude
         """
         pr_title = pr_info.get("title", "")
+        pr_author = pr_info.get("user", {}).get("login", "unknown")
         entry_type = context.get("type", "unknown")
 
         # Use provided types or defaults
@@ -355,9 +356,16 @@ Legacy Changelog Entry:
 
 PR Title: {pr_title}
 
+PR Author: {pr_author}
+
 Entry Type Detected: {entry_type}
 
 {validation_section}
+
+**IMPORTANT: Always include the authors field**
+- The authors field is REQUIRED and must include at least the PR author ({pr_author})
+- Extract any additional authors from the legacy entry text if mentioned
+- Format: authors: [{{name: "Author Name"}}]
 
 Now convert this into logchange format, validating that it's relevant to the code changes:"""
 

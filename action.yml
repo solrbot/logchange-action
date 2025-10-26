@@ -87,7 +87,7 @@ inputs:
     default: 'CHANGELOG.md'
 
   on-legacy-entry:
-    description: 'Action when legacy changelog entry found without logchange entry: "convert", "warn", or "fail"'
+    description: 'Action when legacy changelog entry is found. Always fails the action with different levels of help: "fail" (just fail), "warn" (fail + comment), "remove" (fail + removal suggestions), "convert" (fail + removal suggestions + LLM conversion to logchange)'
     required: false
     default: 'convert'
 
