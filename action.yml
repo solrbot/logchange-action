@@ -81,30 +81,30 @@ inputs:
     required: false
     default: ''
 
-  legacy-changelog-paths:
-    description: 'Comma-separated list of legacy changelog file paths to detect (e.g., CHANGELOG.md,HISTORY.txt). Defaults to CHANGELOG.md. Set to empty string to disable legacy changelog detection.'
+  managed-changelog-paths:
+    description: 'Comma-separated list of managed changelog file paths to detect (e.g., CHANGELOG.md,HISTORY.txt). Defaults to CHANGELOG.md. Set to empty string to disable managed changelog detection.'
     required: false
     default: 'CHANGELOG.md'
 
-  on-legacy-entry:
-    description: 'Action when legacy changelog entry is found. Always fails the action with different levels of help: "fail" (just fail), "warn" (fail + comment), "remove" (fail + removal suggestions), "convert" (fail + removal suggestions + LLM conversion to logchange)'
+  on-managed-entry:
+    description: 'Action when managed changelog file is edited. Always fails the action with different levels of help: "fail" (just fail), "warn" (fail + comment), "remove" (fail + removal suggestions), "convert" (fail + removal suggestions + LLM conversion to logchange)'
     required: false
     default: 'convert'
 
   on-legacy-and-logchange:
-    description: 'Action when both legacy and logchange entries in same PR: "fail", "warn", or "ignore"'
+    description: 'Action when both managed and logchange entries in same PR: "fail", "warn", or "ignore"'
     required: false
     default: 'warn'
 
-  legacy-entry-message:
-    description: 'Custom message when legacy changelog entry is found'
+  managed-entry-message:
+    description: 'Custom message when managed changelog file is detected'
     required: false
-    default: 'I detected a legacy changelog entry. Converting it to logchange format...'
+    default: 'I detected a managed changelog file. Converting it to logchange format...'
 
-  legacy-conflict-message:
-    description: 'Custom message when both legacy and logchange entries are present'
+  managed-conflict-message:
+    description: 'Custom message when both managed and logchange entries are present'
     required: false
-    default: 'This PR contains both legacy and logchange changelog entries. Please use only logchange format.'
+    default: 'This PR contains both managed and logchange changelog entries. Please use only logchange format.'
 
   external-issue-regex:
     description: 'Regex pattern to detect external issue references (e.g., JIRA-123). Must have capture group for issue ID. Example: "JIRA-(\d+)"'
@@ -148,12 +148,12 @@ outputs:
     description: 'Whether the changelog entry is valid'
   changelog-generated:
     description: 'Whether a changelog entry was generated'
-  legacy-entry-found:
-    description: 'Whether a legacy changelog entry was found'
-  legacy-converted:
-    description: 'Whether a legacy entry was converted to logchange format'
-  legacy-conflict:
-    description: 'Whether both legacy and logchange entries were found'
+  managed-entry-found:
+    description: 'Whether a managed changelog file was found'
+  managed-converted:
+    description: 'Whether a managed entry was converted to logchange format'
+  managed-conflict:
+    description: 'Whether both managed and logchange entries were found'
   generation-error:
     description: 'Error message if generation failed'
 

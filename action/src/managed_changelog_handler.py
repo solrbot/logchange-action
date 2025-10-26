@@ -1,4 +1,4 @@
-"""Legacy changelog detection and conversion handler"""
+"""Managed changelog detection and conversion handler"""
 
 import logging
 import re
@@ -9,53 +9,53 @@ from changelog_generator import ChangelogGenerator
 logger = logging.getLogger(__name__)
 
 
-class LegacyChangelogHandler:
-    """Detect and handle legacy changelog entries"""
+class ManagedChangelogHandler:
+    """Detect and handle managed changelog entries"""
 
-    def __init__(self, legacy_changelog_paths: Optional[List[str]] = None):
+    def __init__(self, managed_changelog_paths: Optional[List[str]] = None):
         """
-        Initialize legacy changelog handler
+        Initialize managed changelog handler
 
         Args:
-            legacy_changelog_paths: List of file paths/patterns to check for legacy changelogs.
-                                   If empty/None, legacy changelog detection is DISABLED.
+            managed_changelog_paths: List of file paths/patterns to check for managed changelogs.
+                                   If empty/None, managed changelog detection is DISABLED.
                                    Examples: ['CHANGELOG.md', 'HISTORY.txt', 'docs/CHANGES.md']
         """
-        self.legacy_changelog_paths = legacy_changelog_paths or []
-        self.is_enabled = len(self.legacy_changelog_paths) > 0
+        self.managed_changelog_paths = managed_changelog_paths or []
+        self.is_enabled = len(self.managed_changelog_paths) > 0
 
         if self.is_enabled:
             logger.info(
-                f"Initialized legacy changelog handler with {len(self.legacy_changelog_paths)} paths"
+                f"Initialized managed changelog handler with {len(self.managed_changelog_paths)} paths"
             )
         else:
-            logger.info("Legacy changelog detection is DISABLED (no paths configured)")
+            logger.info("Managed changelog detection is DISABLED (no paths configured)")
 
-    def find_legacy_changelog_files(self, pr_files: List[str]) -> List[str]:
+    def find_managed_changelog_files(self, pr_files: List[str]) -> List[str]:
         """
-        Find legacy changelog files in PR
+        Find managed changelog files in PR
 
         Args:
             pr_files: List of all files modified in PR
 
         Returns:
-            List of legacy changelog file paths found in PR (empty if detection disabled)
+            List of managed changelog file paths found in PR (empty if detection disabled)
         """
         if not self.is_enabled:
-            logger.debug("Legacy changelog detection is disabled, skipping search")
+            logger.debug("Managed changelog detection is disabled, skipping search")
             return []
 
-        legacy_files = []
+        managed_files = []
         for pr_file in pr_files:
-            # Check if file matches any legacy changelog pattern
-            for legacy_path in self.legacy_changelog_paths:
+            # Check if file matches any managed changelog pattern
+            for managed_path in self.managed_changelog_paths:
                 # Support exact matches and patterns like 'docs/CHANGELOG.md'
-                if pr_file.endswith(legacy_path) or pr_file == legacy_path:
-                    legacy_files.append(pr_file)
+                if pr_file.endswith(managed_path) or pr_file == managed_path:
+                    managed_files.append(pr_file)
                     break
 
-        logger.info(f"Found {len(legacy_files)} legacy changelog file(s) in PR")
-        return legacy_files
+        logger.info(f"Found {len(managed_files)} managed changelog file(s) in PR")
+        return managed_files
 
     def extract_changelog_entry_from_diff(self, diff_content: str) -> Optional[str]:
         """
@@ -93,14 +93,14 @@ class LegacyChangelogHandler:
         return None
 
     def extract_added_lines_with_positions(
-        self, diff_content: str, legacy_file: str
+        self, diff_content: str, managed_file: str
     ) -> List[Tuple[int, str]]:
         """
         Extract changelog lines from diff with their line numbers for suggested edits.
 
         Args:
             diff_content: The diff output for the changelog file
-            legacy_file: The legacy file path (for matching the diff)
+            managed_file: The legacy file path (for matching the diff)
 
         Returns:
             List of tuples (line_number, line_content) for added lines in the new version
@@ -146,14 +146,14 @@ class LegacyChangelogHandler:
         return added_lines_with_pos
 
     def extract_removed_lines_with_positions(
-        self, diff_content: str, legacy_file: str
+        self, diff_content: str, managed_file: str
     ) -> List[Tuple[int, str]]:
         """
         Extract removed changelog lines from diff with their line numbers.
 
         Args:
             diff_content: The diff output for the changelog file
-            legacy_file: The legacy file path (for matching the diff)
+            managed_file: The legacy file path (for matching the diff)
 
         Returns:
             List of tuples (line_number, line_content) for removed lines in the old version
@@ -238,7 +238,7 @@ class LegacyChangelogHandler:
 
         return groups
 
-    def detect_entry_type(self, entry_text: str) -> str:
+    def detect_managed_entry_type(self, entry_text: str) -> str:
         """
         Detect what type of changelog entry this is
 
@@ -267,7 +267,7 @@ class LegacyChangelogHandler:
 
         return "other"
 
-    def extract_version_and_date(
+    def extract_version_and_date_from_managed(
         self, entry_text: str
     ) -> Tuple[Optional[str], Optional[str]]:
         """
@@ -291,9 +291,9 @@ class LegacyChangelogHandler:
 
         return None, None
 
-    def build_legacy_context(self, entry_text: str) -> Dict[str, Any]:
+    def build_managed_context(self, entry_text: str) -> Dict[str, Any]:
         """
-        Build context information about a legacy changelog entry
+        Build context information about a managed changelog entry
 
         Args:
             entry_text: The changelog entry text
@@ -301,8 +301,8 @@ class LegacyChangelogHandler:
         Returns:
             Dictionary with: type, version, date, summary, line_count
         """
-        entry_type = self.detect_entry_type(entry_text)
-        version, date = self.extract_version_and_date(entry_text)
+        entry_type = self.detect_managed_entry_type(entry_text)
+        version, date = self.extract_version_and_date_from_managed(entry_text)
 
         # Create a brief summary (first 100 chars)
         summary = entry_text[:100].replace("\n", " ").strip()
@@ -318,7 +318,7 @@ class LegacyChangelogHandler:
             "char_count": len(entry_text),
         }
 
-    def create_conversion_prompt(
+    def create_managed_conversion_prompt(
         self,
         entry_text: str,
         pr_info: Dict[str, Any],
@@ -331,7 +331,7 @@ class LegacyChangelogHandler:
         Create a custom user prompt for converting legacy entry to logchange format
 
         Args:
-            entry_text: The legacy changelog entry text
+            entry_text: The managed changelog entry text
             pr_info: PR information from GitHub
             context: Context about the legacy entry
             changelog_types: List of allowed changelog types (uses defaults if not provided)
@@ -386,7 +386,7 @@ PR Code Changes (diff):
 ```
 """
 
-        prompt = f"""I have extracted a changelog entry from a legacy changelog file.
+        prompt = f"""I have extracted a changelog entry from a managed changelog file.
 I need to convert it into logchange-formatted YAML while preserving the original text and intent.
 
 {validation_check}
@@ -424,26 +424,26 @@ Now convert this into logchange format, validating that it's relevant to the cod
 
         return prompt
 
-    def should_fail_on_conflict(
-        self, legacy_files: List[str], logchange_files: List[str]
+    def should_fail_on_managed_logchange_conflict(
+        self, managed_files: List[str], logchange_files: List[str]
     ) -> bool:
         """
         Determine if having both legacy and logchange entries is a conflict
 
         Args:
-            legacy_files: List of legacy changelog files with entries
+            managed_files: List of managed changelog files with entries
             logchange_files: List of logchange files with entries
 
         Returns:
             True if both types are present (conflict), False otherwise
         """
-        has_legacy = len(legacy_files) > 0
+        has_legacy = len(managed_files) > 0
         has_logchange = len(logchange_files) > 0
         is_conflict = has_legacy and has_logchange
 
         if is_conflict:
             logger.warning(
-                f"Conflict detected: {len(legacy_files)} legacy files and {len(logchange_files)} logchange files"
+                f"Conflict detected: {len(managed_files)} legacy files and {len(logchange_files)} logchange files"
             )
 
         return is_conflict

@@ -81,15 +81,15 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 | `max-tokens-per-file` | `1000` | Max tokens per file |
 | `claude-system-prompt` | (built-in) | Custom AI instructions |
 
-### Legacy Changelog Support
+### Managed Changelog Support
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `legacy-changelog-paths` | `CHANGELOG.md` | Legacy changelog files to detect (comma-separated). Set to empty to disable. |
-| `on-legacy-entry` | `convert` | Action when legacy file is edited: `fail` (no help), `warn` (comment), `remove` (suggest removal), `convert` (LLM conversion) |
-| `on-legacy-and-logchange` | `warn` | Action when both legacy and logchange entries exist: `fail`, `warn`, or `ignore` |
-| `legacy-entry-message` | (see below) | Custom message when legacy entry is detected |
-| `legacy-conflict-message` | (see below) | Custom message when both entry types exist |
+| `managed-changelog-paths` | `CHANGELOG.md` | Managed changelog files to detect (comma-separated). Set to empty to disable. |
+| `on-managed-entry` | `convert` | Action when managed file is edited: `fail` (no help), `warn` (comment), `remove` (suggest removal), `convert` (LLM conversion) |
+| `on-managed-and-logchange` | `warn` | Action when both managed and logchange entries exist: `fail`, `warn`, or `ignore` |
+| `managed-entry-message` | (see below) | Custom message when managed entry is detected |
+| `managed-conflict-message` | (see below) | Custom message when both entry types exist |
 
 ### Validation Messages & Behavior
 
