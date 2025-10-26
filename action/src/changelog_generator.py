@@ -578,8 +578,13 @@ Output ONLY the corrected YAML with no additional text."""
 {pr_diff}
 ```
 
-Based on the above information, generate a valid logchange YAML entry that accurately describes this change.
-Make sure the generated YAML is valid and can be parsed directly. Output ONLY the YAML with no additional text."""
+**IMPORTANT INSTRUCTIONS:**
+1. Always include the "authors" field with at least the primary author ({pr_author})
+2. The authors section must contain the PR author information
+3. Extract any additional authors from commit authors if available
+4. Generate a valid logchange YAML entry that accurately describes this change
+5. Make sure the generated YAML is valid and can be parsed directly
+6. Output ONLY the YAML with no additional text"""
 
         return message
 

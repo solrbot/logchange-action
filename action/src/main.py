@@ -515,7 +515,7 @@ class LogchangeAction:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""✨ **I've generated a changelog entry for you!**
+        comment = f"""✨ **I've generated a changelog entry for you!**
 
 Here's the suggested entry for `{file_path}`:
 
@@ -527,7 +527,17 @@ Here's the suggested entry for `{file_path}`:
 1. Create a new file at `{file_path}`
 2. Copy the YAML above into it
 3. Feel free to edit before merging
-"""
+
+---
+
+**To re-generate this suggestion:** Delete this comment and make a new commit."""
+
+        # Add skip labels info if configured
+        if self.skip_changelog_labels:
+            labels_str = ", ".join(self.skip_changelog_labels)
+            comment += f"\n\n**You can skip my suggestions** by adding one of these labels to the PR: `{labels_str}`"
+
+        return comment
 
     def _handle_legacy_conflict(
         self, legacy_files: List[str], changelog_files: List[str]
@@ -554,73 +564,250 @@ Here's the suggested entry for `{file_path}`:
     def _handle_legacy_changelog(
         self, legacy_files: List[str], pr_files: List[str]
     ) -> int:
-        """Handle case where legacy changelog entry exists but no logchange entry"""
+        """Handle case where legacy changelog entry exists but no logchange entry.
+
+        Always fails the action (returns 1) but with different levels of helpfulness:
+        - "fail": Just fail (no additional help)
+        - "warn": Fail + add warning comment
+        - "remove": Fail + add removal suggestions
+        - "convert": Fail + removal suggestions + LLM conversion
+        """
         logger.info(f"Handling {len(legacy_files)} legacy changelog file(s)")
         self.set_output("legacy-entry-found", "true")
 
+        legacy_file = legacy_files[0]
+
+        # Level 1: "fail" - just fail, no help
+        if self.on_legacy_entry == "fail":
+            logger.error("Legacy changelog entry found, failing as configured (no help)")
+            return 1
+
+        # Level 2: "warn" - fail + warning comment
         if self.on_legacy_entry == "warn":
             logger.warning("Legacy changelog entry found, warning as configured")
             self.github_client.comment_on_pr(f"⚠️ {self.legacy_entry_message}")
-            return 0
-
-        elif self.on_legacy_entry == "fail":
-            logger.error("Legacy changelog entry found, failing as configured")
-            self.github_client.comment_on_pr(f"❌ {self.legacy_entry_message}")
             return 1
 
-        elif self.on_legacy_entry == "convert":
+        # Level 3 & 4: Need to extract lines for removal suggestions
+        # Get the diff for the legacy file (needed for both "remove" and "convert")
+        pr_diff = self.github_client.get_pr_diff([legacy_file])
+        if not pr_diff:
+            logger.error(f"Could not get diff for legacy file: {legacy_file}")
+            # Can't provide removal suggestions without diff, so just warn and fail
+            self.github_client.comment_on_pr(
+                f"⚠️ {self.legacy_entry_message} (Could not extract changelog entry for removal suggestions)"
+            )
+            return 1
+
+        # Extract the changelog entry from the diff
+        entry_text = self.legacy_handler.extract_changelog_entry_from_diff(pr_diff)
+        if not entry_text:
+            logger.error(
+                f"Could not extract changelog entry from diff of {legacy_file}"
+            )
+            self.github_client.comment_on_pr(
+                f"⚠️ {self.legacy_entry_message} (Could not parse changelog entry)"
+            )
+            return 1
+
+        # Extract line numbers for suggested removal (needed for both "remove" and "convert")
+        added_lines = self.legacy_handler.extract_added_lines_with_positions(
+            pr_diff, legacy_file
+        )
+        logger.info(f"Found {len(added_lines)} added lines in legacy changelog diff")
+
+        # Level 3: "remove" - fail + removal suggestions
+        if self.on_legacy_entry == "remove":
+            logger.warning(
+                "Legacy changelog entry found, posting removal suggestions as configured"
+            )
+            self.github_client.comment_on_pr(f"⚠️ {self.legacy_entry_message}")
+
+            # Post removal suggestions (without conversion)
+            self._post_legacy_removal_suggestions(
+                legacy_file, added_lines, pr_diff, is_converting=False
+            )
+
+            return 1
+
+        # Level 4: "convert" - fail + conversion + removal suggestions
+        if self.on_legacy_entry == "convert":
+            logger.warning("Legacy changelog entry found, attempting conversion as configured")
+
             # Attempt to convert legacy entry to logchange format
             if not self.generator:
                 logger.error(
                     "Legacy conversion requested but no Claude API token provided"
                 )
                 self.github_client.comment_on_pr(
-                    "❌ Legacy changelog conversion failed: No Claude API token provided"
+                    "⚠️ Could not convert legacy changelog entry: No Claude API token provided"
                 )
                 self.set_output("generation-error", "No Claude API token provided")
+                # Still post removal suggestions even if conversion fails
+                self._post_legacy_removal_suggestions(legacy_file, added_lines, pr_diff)
                 return 1
 
-            return self._convert_legacy_to_logchange(legacy_files[0], pr_files)
+            # Try to convert
+            converted_entry = self._attempt_legacy_conversion(
+                legacy_file, entry_text, added_lines, pr_diff, pr_files
+            )
 
-        self.set_output("legacy-entry-found", "false")
-        return 0
+            # Post removal suggestions regardless of conversion success
+            self._post_legacy_removal_suggestions(legacy_file, added_lines, pr_diff)
 
-    def _convert_legacy_to_logchange(
-        self, legacy_file: str, pr_files: List[str]
-    ) -> int:
-        """Convert a legacy changelog entry to logchange format"""
+            # If conversion succeeded, also post the converted entry
+            if converted_entry:
+                self.set_output("legacy-converted", "true")
+                suggestion_comment = self._format_legacy_conversion_comment(
+                    converted_entry, legacy_file
+                )
+                self.github_client.comment_on_pr(suggestion_comment)
+
+            return 1
+
+        # Fallback - should not reach here if config is valid, but just in case
+        logger.error(f"Unknown on-legacy-entry mode: {self.on_legacy_entry}")
+        return 1
+
+    def _post_legacy_removal_suggestions(
+        self,
+        legacy_file: str,
+        added_lines: List[tuple],
+        pr_diff: str,
+        is_converting: bool = True,
+    ) -> None:
+        """Post review comments for legacy changelog file changes.
+
+        Suggests restoring removed lines and removing added lines.
+
+        Args:
+            legacy_file: Path to the legacy changelog file
+            added_lines: List of tuples (line_number, line_content)
+            pr_diff: The diff of the legacy file
+            is_converting: If True, message says "was converted"; if False, says "should be removed"
+        """
+        pr_info = self.github_event.get("pull_request", {})
+        commit_sha = pr_info.get("head", {}).get("sha", "")
+
+        if not commit_sha:
+            logger.debug("No commit SHA available")
+            return
+
+        total_comments = 0
+
+        # Extract and handle removed lines (suggest restoring them)
+        removed_lines = self.legacy_handler.extract_removed_lines_with_positions(
+            pr_diff, legacy_file
+        )
+        if removed_lines:
+            line_groups = self.legacy_handler.group_consecutive_lines(removed_lines)
+            logger.info(
+                f"Creating {len(line_groups)} suggestion(s) to restore removed lines"
+            )
+
+            for start_line, end_line, group_content in line_groups:
+                is_single_line = start_line == end_line
+
+                if is_single_line:
+                    suggestion_body = (
+                        "This line was removed and should be restored. "
+                        "Legacy changelog files should not be manually edited.\n\n"
+                        "```suggestion\n"
+                        f"{group_content[0]}\n"
+                        "```"
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="LEFT",
+                    )
+                else:
+                    # For multi-line removals, post a comment suggesting restoration
+                    suggestion_body = (
+                        f"Lines {start_line}-{end_line}: These lines were removed and should be restored. "
+                        "Legacy changelog files should not be manually edited."
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        start_line=start_line,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="LEFT",
+                    )
+                total_comments += 1
+
+        # Extract and handle added lines (suggest removing them)
+        if added_lines:
+            line_groups = self.legacy_handler.group_consecutive_lines(added_lines)
+            logger.info(f"Creating {len(line_groups)} suggestion(s) to remove added lines")
+
+            for start_line, end_line, group_content in line_groups:
+                is_single_line = start_line == end_line
+
+                if is_converting:
+                    conversion_msg = "was converted to logchange format"
+                    action_msg = "Let's remove it"
+                else:
+                    conversion_msg = "should be removed"
+                    action_msg = "Please remove this legacy entry"
+
+                if is_single_line:
+                    # For single-line removals, use GitHub's suggestion syntax
+                    suggestion_body = (
+                        f"This {conversion_msg}. {action_msg}.\n\n"
+                        "```suggestion\n"
+                        "```"
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="RIGHT",
+                    )
+                else:
+                    # For multi-line removals, post a comment with line range
+                    suggestion_body = (
+                        f"Lines {start_line}-{end_line}: This {conversion_msg}. {action_msg}."
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        start_line=start_line,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="RIGHT",
+                    )
+                total_comments += 1
+
+        if total_comments > 0:
+            logger.info(f"Created {total_comments} total comments on legacy file changes")
+
+    def _attempt_legacy_conversion(
+        self,
+        legacy_file: str,
+        entry_text: str,
+        added_lines: List[tuple],
+        pr_diff: str,
+        pr_files: List[str],
+    ) -> Optional[str]:
+        """Attempt to convert a legacy changelog entry to logchange format.
+
+        Args:
+            legacy_file: Path to the legacy changelog file
+            entry_text: The extracted changelog entry text
+            added_lines: List of tuples (line_number, line_content)
+            pr_diff: The diff of the legacy file
+            pr_files: All files modified in the PR
+
+        Returns:
+            The generated logchange YAML entry, or None if conversion failed
+        """
         try:
             logger.info(f"Converting legacy changelog: {legacy_file}")
-
-            # Get the diff for the legacy file
-            pr_diff = self.github_client.get_pr_diff([legacy_file])
-            if not pr_diff:
-                logger.error(f"Could not get diff for legacy file: {legacy_file}")
-                self.github_client.comment_on_pr(
-                    f"❌ Could not extract changelog entry from {legacy_file}"
-                )
-                return 1
-
-            # Extract the changelog entry from the diff
-            entry_text = self.legacy_handler.extract_changelog_entry_from_diff(pr_diff)
-            if not entry_text:
-                logger.error(
-                    f"Could not extract changelog entry from diff of {legacy_file}"
-                )
-                self.github_client.comment_on_pr(
-                    f"⚠️ Found changes to {legacy_file} but could not extract changelog entry"
-                )
-                return 0  # Don't fail, just warn
-
-            logger.info(f"Extracted {len(entry_text)} characters from legacy changelog")
-
-            # Extract line numbers for suggested removal
-            added_lines = self.legacy_handler.extract_added_lines_with_positions(
-                pr_diff, legacy_file
-            )
-            logger.info(
-                f"Found {len(added_lines)} added lines in legacy changelog diff"
-            )
 
             # Build context about the legacy entry
             context = self.legacy_handler.build_legacy_context(entry_text)
@@ -646,7 +833,8 @@ Here's the suggested entry for `{file_path}`:
 
             if not generated_entry:
                 # Conversion failed - helper already posted error comment
-                return 0
+                logger.warning("Legacy changelog conversion failed")
+                return None
 
             # Check if Claude detected the entry as irrelevant
             if "IRRELEVANT_ENTRY" in generated_entry:
@@ -657,65 +845,29 @@ Here's the suggested entry for `{file_path}`:
                     "ℹ️ Found changes to changelog but the entry appears unrelated to the code changes in this PR. "
                     "Skipping conversion. Please review the entry in the changelog manually if you think this is incorrect."
                 )
-                self.set_output("legacy-entry-found", "true")
                 self.set_output("legacy-converted", "false")
-                return 0
+                return None
 
-            # Post review comments with suggested removal of legacy changelog lines
-            commit_sha = pr_info.get("head", {}).get("sha", "")
-            if added_lines and commit_sha:
-                # Group consecutive lines for multi-line suggestions
-                line_groups = self.legacy_handler.group_consecutive_lines(added_lines)
-                logger.info(
-                    f"Creating {len(line_groups)} review comment(s) for removal suggestions"
-                )
-
-                for start_line, end_line, group_content in line_groups:
-                    is_single_line = start_line == end_line
-
-                    if is_single_line:
-                        # For single-line removals, use GitHub's suggestion syntax
-                        suggestion_body = (
-                            "This was converted to logchange format. Let's remove it.\n\n"
-                            "```suggestion\n"
-                            "```"
-                        )
-                        self.github_client.create_review_comment_with_suggestion(
-                            commit_sha=commit_sha,
-                            file_path=legacy_file,
-                            line=end_line,
-                            body=suggestion_body,
-                        )
-                    else:
-                        # For multi-line removals, post a comment with line range
-                        suggestion_body = (
-                            f"Lines {start_line}-{end_line}: This was converted to logchange format. "
-                            "Please remove these lines."
-                        )
-                        self.github_client.create_review_comment_with_suggestion(
-                            commit_sha=commit_sha,
-                            file_path=legacy_file,
-                            start_line=start_line,
-                            line=end_line,
-                            body=suggestion_body,
-                        )
-
-            # Post the converted entry as a regular comment
-            suggestion_comment = self._format_legacy_conversion_comment(
-                generated_entry, legacy_file
-            )
-            self.github_client.comment_on_pr(suggestion_comment)
-
-            self.set_output("legacy-converted", "true")
             logger.info("Legacy changelog successfully converted to logchange format")
-            return 0
+            return generated_entry
 
         except Exception as e:
             logger.error(f"Legacy conversion failed: {e}", exc_info=True)
-            error_msg = f"Legacy changelog conversion failed: {str(e)}"
-            self.github_client.comment_on_pr(f"❌ {error_msg}")
+            error_msg = f"Could not convert legacy changelog entry: {str(e)}"
+            self.github_client.comment_on_pr(f"⚠️ {error_msg}")
             self.set_output("generation-error", str(e))
-            return 1
+            return None
+
+    def _convert_legacy_to_logchange(
+        self, legacy_file: str, pr_files: List[str]
+    ) -> int:
+        """Convert a legacy changelog entry to logchange format (legacy method, deprecated)"""
+        # This method is deprecated and kept for backward compatibility
+        # New code should use _handle_legacy_changelog with proper on_legacy_entry handling
+        logger.warning(
+            "_convert_legacy_to_logchange() is deprecated, use _handle_legacy_changelog() instead"
+        )
+        return 1
 
     def _format_legacy_conversion_comment(
         self, generated_entry: str, legacy_file: str
@@ -730,7 +882,7 @@ Here's the suggested entry for `{file_path}`:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""🔄 **I've converted the changelog entry to logchange format!**
+        comment = f"""🔄 **I've converted the changelog entry to logchange format!**
 
 I detected changes to `{legacy_file}` and converted them to the logchange format below.
 
@@ -757,7 +909,17 @@ I detected changes to `{legacy_file}` and converted them to the logchange format
 
 **Why?**
 This project uses logchange format for changelog entries. Using logchange ensures consistency and better tooling support across all changelog entries.
-"""
+
+---
+
+**To re-generate this suggestion:** Delete this comment and make a new commit."""
+
+        # Add skip labels info if configured
+        if self.skip_changelog_labels:
+            labels_str = ", ".join(self.skip_changelog_labels)
+            comment += f"\n\n**You can skip my suggestions** by adding one of these labels to the PR: `{labels_str}`"
+
+        return comment
 
 
 def main():

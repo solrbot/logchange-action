@@ -52,9 +52,9 @@ class ActionConfig:
         self.forbidden_fields = self._parse_list_input("forbidden-fields", "")
         self.optional_fields = self._parse_list_input("optional-fields", "")
 
-        # Legacy changelog configuration (disabled by default)
+        # Legacy changelog configuration (enabled by default with CHANGELOG.md)
         self.legacy_changelog_paths = self._parse_list_input(
-            "legacy-changelog-paths", ""
+            "legacy-changelog-paths", "CHANGELOG.md"
         )
         self.on_legacy_entry = self._get_input("on-legacy-entry", "convert").lower()
         self.on_legacy_and_logchange = self._get_input(
@@ -173,10 +173,10 @@ class ActionConfig:
             )
 
         # Validate on_legacy_entry mode
-        if self.on_legacy_entry not in ("convert", "warn", "fail"):
+        if self.on_legacy_entry not in ("convert", "warn", "fail", "remove"):
             raise ConfigurationError(
                 f"Invalid on-legacy-entry mode: {self.on_legacy_entry}. "
-                "Must be one of: convert, warn, fail"
+                "Must be one of: fail, warn, remove, convert"
             )
 
         # Validate on_legacy_and_logchange mode
