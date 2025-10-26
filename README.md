@@ -48,8 +48,10 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 | `changelog-path` | `changelog/unreleased` | Path to changelog directory |
 | `on-missing-entry` | `fail` | Action: `fail`, `warn`, or `generate` |
 | `skip-files-regex` | (empty) | Skip changelog if all files match pattern |
+| `skip-changelog-labels` | (empty) | Skip changelog if PR has any of these labels (comma-separated) |
+| `missing-entry-message` | (see below) | Custom message when changelog entry is missing |
 | `claude-token` | (empty) | Claude API key for generation |
-| `claude-model` | `claude-3-5-sonnet-20241022` | Claude model to use |
+| `claude-model` | `claude-opus-4-1-20250805` | Claude model to use |
 | `changelog-language` | `English` | Language for generated entries |
 
 ### Validation Rules
@@ -78,6 +80,29 @@ Add this to your workflow file (e.g., `.github/workflows/changelog-check.yml`):
 | `max-tokens-context` | `5000` | Max tokens to send to LLM for PR diff |
 | `max-tokens-per-file` | `1000` | Max tokens per file |
 | `claude-system-prompt` | (built-in) | Custom AI instructions |
+
+### Legacy Changelog Support
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `legacy-changelog-paths` | `CHANGELOG.md` | Legacy changelog files to detect (comma-separated). Set to empty to disable. |
+| `on-legacy-entry` | `convert` | Action when legacy file is edited: `fail` (no help), `warn` (comment), `remove` (suggest removal), `convert` (LLM conversion) |
+| `on-legacy-and-logchange` | `warn` | Action when both legacy and logchange entries exist: `fail`, `warn`, or `ignore` |
+| `legacy-entry-message` | (see below) | Custom message when legacy entry is detected |
+| `legacy-conflict-message` | (see below) | Custom message when both entry types exist |
+
+### Validation Messages & Behavior
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `validation-fail-message` | (see below) | Custom message when changelog entry fails validation |
+| `validation-fail-workflow` | `true` | Whether to fail the workflow on validation errors |
+
+### Testing & Debugging
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `dry-run` | `false` | Generate suggestions without posting comments (for testing) |
 
 ## Examples
 
