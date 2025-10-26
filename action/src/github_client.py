@@ -265,19 +265,21 @@ class GitHubClient:
         body: str,
         suggestion: str = "",
         start_line: int = None,
+        side: str = "RIGHT",
     ) -> bool:
         """
         Create a review comment on a specific line with optional suggested changes.
-        Supports multi-line comments.
+        Supports multi-line comments and comments on removed lines.
 
         Args:
             commit_sha: The commit SHA where the comment should be posted
             file_path: Path to the file in the PR
-            line: Line number (in the new version of the file, or end line for multi-line)
+            line: Line number (in the new version for RIGHT, old version for LEFT)
             body: The comment text (markdown format with suggestion syntax if applicable)
             suggestion: Optional suggested replacement text (for "suggest edits" feature).
                        Use "```suggestion\n<content>\n```" format in body instead.
             start_line: Optional start line for multi-line comments (if None, single line comment)
+            side: "RIGHT" for added/modified lines, "LEFT" for removed lines
 
         Returns:
             True if successful, False otherwise
@@ -294,13 +296,13 @@ class GitHubClient:
             "commit_id": commit_sha,
             "path": file_path,
             "line": line,
-            "side": "RIGHT",  # Comment on the new version of the file
+            "side": side,
         }
 
         # Add start_line and start_side for multi-line comments
         if start_line is not None:
             comment_data["start_line"] = start_line
-            comment_data["start_side"] = "RIGHT"
+            comment_data["start_side"] = side
 
         try:
             response = self.session.post(url, json=comment_data)

@@ -145,6 +145,59 @@ class LegacyChangelogHandler:
 
         return added_lines_with_pos
 
+    def extract_removed_lines_with_positions(
+        self, diff_content: str, legacy_file: str
+    ) -> List[Tuple[int, str]]:
+        """
+        Extract removed changelog lines from diff with their line numbers.
+
+        Args:
+            diff_content: The diff output for the changelog file
+            legacy_file: The legacy file path (for matching the diff)
+
+        Returns:
+            List of tuples (line_number, line_content) for removed lines in the old version
+        """
+        lines = diff_content.split("\n")
+        removed_lines_with_pos = []
+        current_old_line = 0
+        in_hunk = False
+
+        for line in lines:
+            # Skip lines until we find the hunk header
+            if line.startswith("@@"):
+                # Parse hunk header: @@ -old_start,old_count +new_start,new_count @@
+                try:
+                    parts = line.split(" ")
+                    old_range = parts[1]  # -old_start,old_count
+                    old_start = int(old_range.split(",")[0].lstrip("-"))
+                    current_old_line = old_start
+                except (IndexError, ValueError):
+                    pass
+                in_hunk = True
+                continue
+
+            if not in_hunk:
+                continue
+
+            # Process lines in hunk
+            if line.startswith("@@"):
+                # New hunk, reset
+                continue
+            elif line.startswith("-") and not line.startswith("---"):
+                # Removed line - record it with position
+                content = line[1:]  # Remove '-' prefix
+                removed_lines_with_pos.append((current_old_line, content))
+                current_old_line += 1
+            elif line.startswith("+"):
+                # Added line - don't increment old line counter
+                pass
+            elif not line.startswith("\\"):
+                # Context line (unchanged) - increment counter
+                current_old_line += 1
+
+        return removed_lines_with_pos
+
     def group_consecutive_lines(
         self, added_lines: List[Tuple[int, str]]
     ) -> List[Tuple[int, int, List[str]]]:

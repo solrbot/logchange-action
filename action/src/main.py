@@ -676,63 +676,115 @@ Here's the suggested entry for `{file_path}`:
         pr_diff: str,
         is_converting: bool = True,
     ) -> None:
-        """Post review comments with suggested removal of legacy changelog lines.
+        """Post review comments for legacy changelog file changes.
+
+        Suggests restoring removed lines and removing added lines.
 
         Args:
             legacy_file: Path to the legacy changelog file
             added_lines: List of tuples (line_number, line_content)
-            pr_diff: The diff of the legacy file (not used directly but kept for context)
+            pr_diff: The diff of the legacy file
             is_converting: If True, message says "was converted"; if False, says "should be removed"
         """
         pr_info = self.github_event.get("pull_request", {})
         commit_sha = pr_info.get("head", {}).get("sha", "")
 
-        if not added_lines or not commit_sha:
-            logger.debug(
-                f"No lines to remove or no commit SHA: {len(added_lines)} lines, "
-                f"commit_sha={'set' if commit_sha else 'not set'}"
-            )
+        if not commit_sha:
+            logger.debug("No commit SHA available")
             return
 
-        # Group consecutive lines for multi-line suggestions
-        line_groups = self.legacy_handler.group_consecutive_lines(added_lines)
-        logger.info(f"Creating {len(line_groups)} removal suggestion(s)")
+        total_comments = 0
 
-        for start_line, end_line, group_content in line_groups:
-            is_single_line = start_line == end_line
+        # Extract and handle removed lines (suggest restoring them)
+        removed_lines = self.legacy_handler.extract_removed_lines_with_positions(
+            pr_diff, legacy_file
+        )
+        if removed_lines:
+            line_groups = self.legacy_handler.group_consecutive_lines(removed_lines)
+            logger.info(
+                f"Creating {len(line_groups)} suggestion(s) to restore removed lines"
+            )
 
-            if is_converting:
-                conversion_msg = "was converted to logchange format"
-                action_msg = "Let's remove it"
-            else:
-                conversion_msg = "should be removed"
-                action_msg = "Please remove this legacy entry"
+            for start_line, end_line, group_content in line_groups:
+                is_single_line = start_line == end_line
 
-            if is_single_line:
-                # For single-line removals, use GitHub's suggestion syntax
-                suggestion_body = (
-                    f"This {conversion_msg}. {action_msg}.\n\n"
-                    "```suggestion\n"
-                    "```"
-                )
-                self.github_client.create_review_comment_with_suggestion(
-                    commit_sha=commit_sha,
-                    file_path=legacy_file,
-                    line=end_line,
-                    body=suggestion_body,
-                )
-            else:
-                # For multi-line removals, post a comment with line range
-                suggestion_body = (
-                    f"Lines {start_line}-{end_line}: This {conversion_msg}. {action_msg}."
-                )
-                self.github_client.create_review_comment_with_suggestion(
-                    commit_sha=commit_sha,
-                    file_path=legacy_file,
-                    start_line=start_line,
-                    line=end_line,
-                    body=suggestion_body,
-                )
+                if is_single_line:
+                    suggestion_body = (
+                        "This line was removed and should be restored. "
+                        "Legacy changelog files should not be manually edited.\n\n"
+                        "```suggestion\n"
+                        f"{group_content[0]}\n"
+                        "```"
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="LEFT",
+                    )
+                else:
+                    # For multi-line removals, post a comment suggesting restoration
+                    suggestion_body = (
+                        f"Lines {start_line}-{end_line}: These lines were removed and should be restored. "
+                        "Legacy changelog files should not be manually edited."
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        start_line=start_line,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="LEFT",
+                    )
+                total_comments += 1
+
+        # Extract and handle added lines (suggest removing them)
+        if added_lines:
+            line_groups = self.legacy_handler.group_consecutive_lines(added_lines)
+            logger.info(f"Creating {len(line_groups)} suggestion(s) to remove added lines")
+
+            for start_line, end_line, group_content in line_groups:
+                is_single_line = start_line == end_line
+
+                if is_converting:
+                    conversion_msg = "was converted to logchange format"
+                    action_msg = "Let's remove it"
+                else:
+                    conversion_msg = "should be removed"
+                    action_msg = "Please remove this legacy entry"
+
+                if is_single_line:
+                    # For single-line removals, use GitHub's suggestion syntax
+                    suggestion_body = (
+                        f"This {conversion_msg}. {action_msg}.\n\n"
+                        "```suggestion\n"
+                        "```"
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="RIGHT",
+                    )
+                else:
+                    # For multi-line removals, post a comment with line range
+                    suggestion_body = (
+                        f"Lines {start_line}-{end_line}: This {conversion_msg}. {action_msg}."
+                    )
+                    self.github_client.create_review_comment_with_suggestion(
+                        commit_sha=commit_sha,
+                        file_path=legacy_file,
+                        start_line=start_line,
+                        line=end_line,
+                        body=suggestion_body,
+                        side="RIGHT",
+                    )
+                total_comments += 1
+
+        if total_comments > 0:
+            logger.info(f"Created {total_comments} total comments on legacy file changes")
 
     def _attempt_legacy_conversion(
         self,
