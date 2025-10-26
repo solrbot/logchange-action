@@ -626,7 +626,7 @@ Here's the suggested entry for `{file_path}`:
             context = self.legacy_handler.build_legacy_context(entry_text)
             logger.info(f"Legacy entry context: {context}")
 
-            # Create custom prompt for conversion
+            # Create custom prompt for conversion (pass PR diff for relevance validation)
             pr_info = self.github_event.get("pull_request", {})
             conversion_prompt = self.legacy_handler.create_conversion_prompt(
                 entry_text,
@@ -634,6 +634,7 @@ Here's the suggested entry for `{file_path}`:
                 context,
                 changelog_types=self.changelog_types,
                 forbidden_fields=self.forbidden_fields,
+                pr_diff=pr_diff,
             )
 
             # Generate and validate using consolidated helper
@@ -645,6 +646,19 @@ Here's the suggested entry for `{file_path}`:
 
             if not generated_entry:
                 # Conversion failed - helper already posted error comment
+                return 0
+
+            # Check if Claude detected the entry as irrelevant
+            if "IRRELEVANT_ENTRY" in generated_entry:
+                logger.info(
+                    "Legacy entry detected as irrelevant to PR code changes, skipping conversion"
+                )
+                self.github_client.comment_on_pr(
+                    "ℹ️ Found changes to changelog but the entry appears unrelated to the code changes in this PR. "
+                    "Skipping conversion. Please review the entry in the changelog manually if you think this is incorrect."
+                )
+                self.set_output("legacy-entry-found", "true")
+                self.set_output("legacy-converted", "false")
                 return 0
 
             # Post review comments with suggested removal of legacy changelog lines
@@ -673,8 +687,7 @@ Here's the suggested entry for `{file_path}`:
                             body=suggestion_body,
                         )
                     else:
-                        # For multi-line removals, post a regular comment on the last line
-                        # (GitHub's multi-line suggestion API has limitations)
+                        # For multi-line removals, post a comment with line range
                         suggestion_body = (
                             f"Lines {start_line}-{end_line}: This was converted to logchange format. "
                             "Please remove these lines."
@@ -682,6 +695,7 @@ Here's the suggested entry for `{file_path}`:
                         self.github_client.create_review_comment_with_suggestion(
                             commit_sha=commit_sha,
                             file_path=legacy_file,
+                            start_line=start_line,
                             line=end_line,
                             body=suggestion_body,
                         )

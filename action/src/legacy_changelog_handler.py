@@ -272,6 +272,7 @@ class LegacyChangelogHandler:
         context: Dict[str, Any],
         changelog_types: Optional[List[str]] = None,
         forbidden_fields: Optional[List[str]] = None,
+        pr_diff: str = "",
     ) -> str:
         """
         Create a custom user prompt for converting legacy entry to logchange format
@@ -282,6 +283,7 @@ class LegacyChangelogHandler:
             context: Context about the legacy entry
             changelog_types: List of allowed changelog types (uses defaults if not provided)
             forbidden_fields: List of forbidden fields (from configuration)
+            pr_diff: The PR diff to validate relevance (optional)
 
         Returns:
             The user prompt for Claude
@@ -313,19 +315,38 @@ class LegacyChangelogHandler:
             changelog_types, forbidden_fields
         )
 
-        prompt = f"""I have extracted a changelog entry that was carefully written by the author.
+        validation_check = ""
+        if pr_diff:
+            validation_check = """
+IMPORTANT - RELEVANCE CHECK:
+Before conversion, verify that the changelog entry is actually relevant to the PR changes:
+- Look at the PR diff to understand what code actually changed
+- Check if the entry text describes related changes or is completely unrelated
+- If the entry is CLEARLY UNRELATED (e.g., discusses "elephants" when code is about auth),
+  REJECT by returning: title: "IRRELEVANT_ENTRY"
+- Only convert entries reasonably related to or describing the actual code changes
+
+PR Code Changes (diff):
+```
+{pr_diff[:1500]}...
+```
+"""
+
+        prompt = f"""I have extracted a changelog entry from a legacy changelog file.
 I need to convert it into logchange-formatted YAML while preserving the original text and intent.
 
-IMPORTANT: This is the author's own writing. Preserve it as closely as possible.
+{validation_check}
 
 CONVERSION INSTRUCTIONS:
-1. **Preserve the original text**: The changelog entry was written by the author. Keep the wording and meaning as-is.
-2. **Gentle rewriting only**: Only rewrite if it's grammatically incorrect or unclear compared to the actual changes.
-3. **Extract metadata**: Look for issue links (#123, JIRA-123, etc.) and additional contributors mentioned in the text.
-4. **Determine type**: Infer the type from the content. Allowed types: {', '.join(changelog_types)}
-5. **Create title**: Use the existing entry text or PR title to create a clear, concise title if one doesn't exist.
-6. **Valid YAML**: Ensure the generated YAML is valid and properly formatted.
-7. **Output format**: Output ONLY the YAML with no additional text, markdown, or comments.
+1. **Validate relevance**: Ensure the entry describes changes actually made in the code (see PR diff above)
+2. **Preserve the original text**: Keep the wording and meaning as-is when relevant
+3. **Gentle rewriting only**: Only rewrite if it's grammatically incorrect or unclear
+4. **Extract metadata**: Look for issue links (#123, JIRA-123, etc.) and additional contributors mentioned in the text
+5. **Determine type**: Infer the type from the content. Allowed types: {', '.join(changelog_types)}
+6. **Create title**: Use the existing entry text or PR title to create a clear, concise title
+7. **Valid YAML**: Ensure the generated YAML is valid and properly formatted
+8. **Output format**: Output ONLY the YAML with no additional text, markdown, or comments
+9. **Rejection case**: If entry is clearly unrelated to code changes, output: title: "IRRELEVANT_ENTRY"
 
 Legacy Changelog Entry:
 ```
@@ -338,7 +359,7 @@ Entry Type Detected: {entry_type}
 
 {validation_section}
 
-Now convert this into logchange format while preserving the author's original text:"""
+Now convert this into logchange format, validating that it's relevant to the code changes:"""
 
         return prompt
 
