@@ -515,7 +515,7 @@ class LogchangeAction:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""✨ **I've generated a changelog entry for you!**
+        comment = f"""✨ **I've generated a changelog entry for you!**
 
 Here's the suggested entry for `{file_path}`:
 
@@ -527,7 +527,17 @@ Here's the suggested entry for `{file_path}`:
 1. Create a new file at `{file_path}`
 2. Copy the YAML above into it
 3. Feel free to edit before merging
-"""
+
+---
+
+**To re-generate this suggestion:** Delete this comment and make a new commit."""
+
+        # Add skip labels info if configured
+        if self.skip_changelog_labels:
+            labels_str = ", ".join(self.skip_changelog_labels)
+            comment += f"\n\n**You can skip my suggestions** by adding one of these labels to the PR: `{labels_str}`"
+
+        return comment
 
     def _handle_legacy_conflict(
         self, legacy_files: List[str], changelog_files: List[str]
@@ -820,7 +830,7 @@ Here's the suggested entry for `{file_path}`:
         filename = generate_changelog_slug(pr_number, pr_title)
         file_path = f"{self.changelog_path}/{filename}"
 
-        return f"""🔄 **I've converted the changelog entry to logchange format!**
+        comment = f"""🔄 **I've converted the changelog entry to logchange format!**
 
 I detected changes to `{legacy_file}` and converted them to the logchange format below.
 
@@ -847,7 +857,17 @@ I detected changes to `{legacy_file}` and converted them to the logchange format
 
 **Why?**
 This project uses logchange format for changelog entries. Using logchange ensures consistency and better tooling support across all changelog entries.
-"""
+
+---
+
+**To re-generate this suggestion:** Delete this comment and make a new commit."""
+
+        # Add skip labels info if configured
+        if self.skip_changelog_labels:
+            labels_str = ", ".join(self.skip_changelog_labels)
+            comment += f"\n\n**You can skip my suggestions** by adding one of these labels to the PR: `{labels_str}`"
+
+        return comment
 
 
 def main():
